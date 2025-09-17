@@ -33,5 +33,6 @@ propellants = struct(...
 
 % staged LVs
 LV1 = TwoStageLV(propellants.LOX_LCH4, propellants.LOX_LH2);
-LV1 = LV1.generate_mass_trends(DeltaV_Total, m_pl, delta, g);
+LV1 = LV1.generate_trends(DeltaV_Total, m_pl, delta, g);
 LV1 = LV1.save_mass_fig();
+LV1 = LV1.save_cost_fig();
