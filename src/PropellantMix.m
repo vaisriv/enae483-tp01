@@ -1,4 +1,4 @@
- classdef PropellantMix
+classdef PropellantMix
         %PROPELLANTMIX Engine Propellant Mixture
 
         properties

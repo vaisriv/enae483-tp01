@@ -6,23 +6,44 @@ classdef TwoStageLV
                 % PROPELLANTS Propellants used in Stages 1 and 2
                 propellants(1, 2) PropellantMix = PropellantMix("Blank", "Blank", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
+                % XS Array of all X values
+                Xs(1, 100) double = linspace(0, 1, 100)
+
+                % MS Array of mass values
+                ms(2, 100) double = zeros(2, 100)
+
+                % M_INS Array of inert mass values
+                m_ins(2, 100) double = zeros(2, 100)
+
+                % M_PRS Array of propellant mass values
+                m_prs(2, 100) double = zeros(2, 100)
+
+                % M_0S Array of total mass values
+                m_0s(1, 100) double = zeros(1, 100)
+
                 % M_0_MIN Minimum Total Mass
-                m_0_min double
+                m_0_min double = inf
 
                 % X_M_MIN DeltaV Fraction for Minimum Total Mass
-                X_m_min double
+                X_m_min double = 0
 
                 % I_M_MIN Index for Minimum Total Mass
-                i_m_min double
+                i_m_min double = 1
+
+                % COSTS Array of cost values
+                costs(2, 100) double = zeros(2, 100)
+
+                % COST_0S Array of total cost values
+                cost_0s(1, 100) double = zeros(1, 100)
 
                 % COST_0_MIN Minimum Total Cost
-                cost_0_min double
+                cost_0_min double = inf
 
                 % X_C_MIN DeltaV Fraction for Minimum Total Cost
-                X_c_min double
+                X_c_min double = 0
 
                 % I_C_MIN Index for Minimum Total Cost
-                i_c_min double
+                i_c_min double = 1
 
                 % MASS_FIG Mass Trends Figure
                 mass_fig matlab.ui.Figure
@@ -41,8 +62,7 @@ classdef TwoStageLV
                                 % STAGE2_PROPELLANT Propellant used in Stage 2
                                 stage2_propellant PropellantMix
                         end
-                        obj.propellants(1) = stage1_propellant;
-                        obj.propellants(2) = stage2_propellant;
+                        obj.propellants(:) = [stage1_propellant stage2_propellant];
                 end
 
                 function [m, m_in, m_pr, m_0] = calculate_stage_masses(obj, X, DeltaV, m_pl, delta, g)
@@ -67,29 +87,44 @@ classdef TwoStageLV
                                 g double = 9.82
                         end
 
-                        Ve(1) = g*obj.propellants(1).specific_impulse;
-                        Ve(2) = g*obj.propellants(2).specific_impulse;
+                        Ve(:) = [
+                                g*obj.propellants(1).specific_impulse ...
+                                g*obj.propellants(2).specific_impulse
+                                ];
 
-                        DV(1) = X*DeltaV;
-                        DV(2) = (1-X)*DeltaV;
+                        DV(:) = [
+                                X*DeltaV ...
+                                (1-X)*DeltaV
+                                ];
 
-                        r(1) = exp(-DV(1)/Ve(1));
-                        r(2) = exp(-DV(2)/Ve(2));
+                        r(:) = [
+                                exp(-DV(1)/Ve(1)) ...
+                                exp(-DV(2)/Ve(2))
+                                ];
 
-                        lambda(1) = r(1) - delta(1);
-                        lambda(2) = r(2) - delta(2);
+                        lambda(:) = [
+                                r(1) - delta(1) ...
+                                r(2) - delta(2)
+                                ];
 
                         m_o(2) = m_pl/lambda(2);
                         m_o(1) = m_o(2)/lambda(1);
 
-                        m_in(1) = delta(1)*m_o(1);
-                        m_in(2) = delta(2)*m_o(2);
+                        m_in(:) = [
+                                delta(1)*m_o(1) ...
+                                delta(2)*m_o(2)
+                                ];
 
-                        m_pr(1) = m_o(1) - m_o(2) - m_in(1);
-                        m_pr(2) = m_o(2) - m_pl - m_in(2);
+                        m_pr(:) = [
+                                m_o(1) - m_o(2) - m_in(1) ...
+                                m_o(2) - m_pl - m_in(2)
+                                ];
 
-                        m(1) = m_in(1) + m_pr(1);
-                        m(2) = m_in(2) + m_pr(2);
+                        m(:) = [
+                                m_in(1) + m_pr(1) ...
+                                m_in(2) + m_pr(2)
+                                ];
+
                         m_0 = m_o(1);
                 end
 
@@ -103,8 +138,10 @@ classdef TwoStageLV
                                 m_in(1, 2) double
                         end
 
-                        cost(1) = 13.52*m_in(1)^(0.55)*1e6;
-                        cost(2) = 13.52*m_in(2)^(0.55)*1e6;
+                        cost(:) = [
+                                13.52*m_in(1)^(0.55)*1e6 ...
+                                13.52*m_in(2)^(0.55)*1e6
+                                ];
 
                         cost_0 = cost(1) + cost(2);
                 end
@@ -128,154 +165,170 @@ classdef TwoStageLV
                                 g double = 9.82
                         end
 
-                        Xs = linspace(0, 1, 100);
-                        ms = zeros(2, 100);
-                        m_ins = zeros(2, 100);
-                        m_prs = zeros(2, 100);
-                        m_0s = zeros(1, 100);
-
-                        costs = zeros(2, 100);
-                        cost_0s = zeros(1, 100);
-
-                        obj.m_0_min = inf;
-                        obj.i_m_min = 0;
-
-                        obj.cost_0_min = inf;
-                        obj.i_c_min = 0;
-
                         for i=1:100
-                                [ms(:, i), m_ins(:, i), m_prs(:, i), m_0s(i)] = obj.calculate_stage_masses(Xs(i), DeltaV, m_pl, delta, g);
+                                [obj.ms(:, i), obj.m_ins(:, i), obj.m_prs(:, i), obj.m_0s(i)] = obj.calculate_stage_masses(obj.Xs(i), DeltaV, m_pl, delta, g);
 
-                                if (m_ins(1, i) > 1) && (m_ins(2, i) > 1)
-                                        [costs(:, i), cost_0s(i)] = obj.calculate_stage_costs(m_ins(:, i));
+                                if (obj.m_ins(1, i) > 1) && (obj.m_ins(2, i) > 1)
+                                        [obj.costs(:, i), obj.cost_0s(i)] = obj.calculate_stage_costs(obj.m_ins(:, i));
                                 else
-                                        costs(1, i) = nan;
-                                        costs(2, i) = nan;
-                                        cost_0s(i) = nan;
+                                        obj.costs(:, i) = [nan nan];
+                                        obj.cost_0s(i) = nan;
                                 end
 
-                                if (m_0s(i) < 1)
-                                        ms(1, i) = nan;
-                                        ms(2, i) = nan;
-                                        m_ins(1, i) = nan;
-                                        m_ins(2, i) = nan;
-                                        m_prs(1, i) = nan;
-                                        m_prs(2, i) = nan;
-                                        m_0s(i) = nan;
+                                if (obj.m_0s(i) < 1)
+                                        obj.ms(:, i) = [nan nan];
+                                        obj.m_ins(:, i) = [nan nan];
+                                        obj.m_prs(:, i) = [nan nan];
+                                        obj.m_0s(i) = nan;
                                 end
 
-                                if (m_0s(i) > 1) && (m_0s(i) < obj.m_0_min)
-                                        obj.m_0_min = m_0s(i);
-                                        obj.X_m_min = Xs(i);
+                                if (obj.m_0s(i) > 1) && (obj.m_0s(i) < obj.m_0_min)
+                                        obj.m_0_min = obj.m_0s(i);
+                                        obj.X_m_min = obj.Xs(i);
                                         obj.i_m_min = i;
                                 end
 
-                                if (cost_0s(i) > 1) && (cost_0s(i) < obj.cost_0_min)
-                                        obj.cost_0_min = cost_0s(i);
-                                        obj.X_c_min = Xs(i);
+                                if (obj.cost_0s(i) > 1) && (obj.cost_0s(i) < obj.cost_0_min)
+                                        obj.cost_0_min = obj.cost_0s(i);
+                                        obj.X_c_min = obj.Xs(i);
                                         obj.i_c_min = i;
                                 end
                         end
 
-                        obj = obj.generate_mass_fig(Xs, ms, m_0s);
-                        obj = obj.generate_cost_fig(Xs, costs, cost_0s);
+                        obj = obj.generate_mass_fig();
+                        obj = obj.generate_cost_fig();
                 end
 
-                function obj = generate_mass_fig(obj, Xs, ms, m_0s)
+                function obj = generate_mass_fig(obj)
                         %GENERATE_MASS_FIG Generate mass figure
                         arguments
                                 % OBJ The object itself
                                 obj TwoStageLV
-
-                                % XS Array of X values
-                                Xs(1, 100) double
-
-                                % MS Array of mass values
-                                ms(2, 100) double
-
-                                % M_0S Array of total mass values
-                                m_0s(1, 100) double
                         end
 
                         obj.mass_fig = figure('visible','off');
                         hold on;
 
-                        % plot(Xs, m_0s/1000, Color="red", LineStyle="-", MarkerEdgeColor="black", Marker=".", MarkerIndices=obj.i_m_min);
+                        plot(obj.Xs, obj.m_0s/1e3, Color="red", LineStyle="-", MarkerEdgeColor="black", Marker=".", MarkerIndices=obj.i_m_min);
+                        plot(obj.Xs, obj.ms(1, :)/1e3, Color="blue");
+                        plot(obj.Xs, obj.ms(2, :)/1e3, Color="green");
 
-                        plot(Xs, m_0s/1000, Color="red");
-                        plot(Xs, ms(1, :)/1000, Color="blue");
-                        plot(Xs, ms(2, :)/1000, Color="green");
-
-                        plot(obj.X_m_min, obj.m_0_min/1000, Color="none", MarkerEdgeColor="black", Marker=".");
-
-                        legend( ...
+                        lgd = legend( ...
                                 "Gross Vehicle Mass", ...
                                 "$1^{\mathrm{st}}$ Stage Mass", ...
                                 "$2^{\mathrm{nd}}$ Stage Mass", ...
-                                sprintf("Minimum Gross Vehicle Mass: %.4G $\\mathrm{[t]}$", obj.m_0_min/1000), ...
                                 Interpreter="latex", ...
-                                Location="eastoutside");
+                                Location="northeastoutside");
+
+                        infoLines = [
+                                sprintf("Minimum Gross Vehicle Mass: %.4G $\\mathrm{[t]}$", obj.m_0_min/1e3);
+                                sprintf("Min. Mass Program Cost: %.4G $\\mathrm{[\\$B2025]}$", obj.cost_0s(obj.i_m_min)/1e9);
+                                sprintf("Min. Mass Stage 1 $\\Delta V$ Fraction: %.4G", obj.X_m_min)
+                                ];
+
+                        fig = gcf;
+                        ax = gca;
+                        fig.Units = "normalized";
+                        ax.Units  = "normalized";
+                        lgd.Units = "normalized";
+
+                        axpos = ax.Position;
+                        lgdpos = lgd.Position;
+                        gap   = 0.010;
+
+                        leftX   = max(axpos(1) + axpos(3) + gap, lgdpos(1));
+                        bottomY = axpos(2);
+                        topY    = lgdpos(2) - gap;
+                        boxW    = max(0.22, 1 - leftX - gap);
+                        boxH    = max(0.10, topY - bottomY);
+
+                        ann = annotation(fig, ...
+                                textbox=[leftX bottomY boxW boxH], ...
+                                String=infoLines, ...
+                                Interpreter="latex", ...
+                                FitBoxToText="on", ...
+                                VerticalAlignment="middle", ...
+                                FontSize=10);
 
                         xlim([0 1]);
-                        xlabel("$X$", Interpreter="latex")
+                        xlabel("$X$", Interpreter="latex");
 
-                        ylim([0 obj.m_0_min/1000*2]);
-                        ylabel("$m \mathrm{[t]}$", Interpreter="latex")
+                        ylim([0 obj.m_0_min/1e3*2]);
+                        ylabel("$m \mathrm{[t]}$", Interpreter="latex");
 
+                        set(gca,'TickLabelInterpreter','latex');
                         title(sprintf( ...
-                                        "Mass Trends for $1^{\\mathrm{st}}$ Stage: %s; $2^{\\mathrm{nd}}$ Stage: %s", ...
-                                        obj.propellants(1).displayname, ...
-                                        obj.propellants(2).displayname), ...
-                                Interpreter="latex")
+                                "Mass Trends for $1^{\\mathrm{st}}$ Stage: %s; $2^{\\mathrm{nd}}$ Stage: %s", ...
+                                obj.propellants(1).displayname, ...
+                                obj.propellants(2).displayname), ...
+                                Interpreter="latex");
 
                         hold off;
                 end
 
-                function obj = generate_cost_fig(obj, Xs, costs, cost_0s)
+                function obj = generate_cost_fig(obj)
                         %GENERATE_COST_FIG Generate cost figure
                         arguments
                                 % OBJ The object itself
                                 obj TwoStageLV
-
-                                % XS Array of X values
-                                Xs(1, 100) double
-
-                                % COSTS Array of cost values
-                                costs(2, 100) double
-
-                                % COST_0S Array of total cost values
-                                cost_0s(1, 100) double
                         end
 
                         obj.cost_fig = figure('visible','off');
                         hold on;
 
-                        plot(Xs, cost_0s(:)/1e9, Color="red");
-                        plot(Xs, costs(1, :)/1e9, Color="blue");
-                        plot(Xs, costs(2, :)/1e9, Color="green");
+                        plot(obj.Xs, obj.cost_0s(:)/1e9, Color="red", LineStyle="-", MarkerEdgeColor="black", Marker=".", MarkerIndices=obj.i_c_min);
+                        plot(obj.Xs, obj.costs(1, :)/1e9, Color="blue");
+                        plot(obj.Xs, obj.costs(2, :)/1e9, Color="green");
 
-                        plot(obj.X_c_min, obj.cost_0_min/1e9, Color="none", MarkerEdgeColor="black", Marker=".");
-
-                        legend( ...
-                                "Gross Vehicle Cost", ...
+                        lgd = legend( ...
+                                "Program Cost", ...
                                 "$1^{\mathrm{st}}$ Stage Cost", ...
                                 "$2^{\mathrm{nd}}$ Stage Cost", ...
-                                sprintf("Minimum Gross Vehicle Cost: %.4G $\\mathrm{[\\$B2025]}$", obj.cost_0_min/1e9), ...
                                 Interpreter="latex", ...
-                                Location="eastoutside");
+                                Location="northeastoutside");
+
+                        infoLines = [
+                                sprintf("Minimum Program Cost: %.4G $\\mathrm{[\\$B2025]}$", obj.cost_0_min/1e9);
+                                sprintf("Min. Cost Gross Vehicle Mass: %.4G $\\mathrm{[t]}$", obj.m_0s(obj.i_c_min)/1e3);
+                                sprintf("Min. Cost Stage 1 $\\Delta V$ Fraction: %.4G", obj.X_c_min)
+                                ];
+
+                        fig = gcf;
+                        ax = gca;
+                        fig.Units = "normalized";
+                        ax.Units  = "normalized";
+                        lgd.Units = "normalized";
+
+                        axpos = ax.Position;
+                        lgdpos = lgd.Position;
+                        gap   = 0.010;
+
+                        leftX   = max(axpos(1) + axpos(3) + gap, lgdpos(1));
+                        bottomY = axpos(2);
+                        topY    = lgdpos(2) - gap;
+                        boxW    = max(0.22, 1 - leftX - gap);
+                        boxH    = max(0.10, topY - bottomY);
+
+                        ann = annotation(fig, ...
+                                textbox=[leftX bottomY boxW boxH], ...
+                                String=infoLines, ...
+                                Interpreter="latex", ...
+                                FitBoxToText="on", ...
+                                VerticalAlignment="middle", ...
+                                FontSize=10);
 
                         xlim([0 1]);
                         xlabel("$X$", Interpreter="latex")
-
                         ylim([0 obj.cost_0_min/1e9*2]);
                         ylabel("$\mathrm{Cost} \mathrm{[\$B2025]}$", Interpreter="latex")
 
                         title(sprintf( ...
-                                        "Cost Trends for $1^{\\mathrm{st}}$ Stage: %s; $2^{\\mathrm{nd}}$ Stage: %s", ...
-                                        obj.propellants(1).displayname, ...
-                                        obj.propellants(2).displayname), ...
+                                "Cost Trends for $1^{\\mathrm{st}}$ Stage: %s; $2^{\\mathrm{nd}}$ Stage: %s", ...
+                                obj.propellants(1).displayname, ...
+                                obj.propellants(2).displayname), ...
                                 Interpreter="latex")
 
+                        set(gca,'TickLabelInterpreter','latex');
                         hold off;
                 end
 
@@ -286,7 +339,7 @@ classdef TwoStageLV
                                 obj TwoStageLV
                         end
 
-                        filename = sprintf("./images/mass/s1 %s - s2 %s.jpg", obj.propellants(1).name, obj.propellants(2).name);
+                        filename = sprintf("./images/mass/%1$s/s1 %1$s - s2 %2$s.jpg", obj.propellants(1).name, obj.propellants(2).name);
 
                         obj.mass_fig.Units = "centimeters";
                         obj.mass_fig.Position = [2 2 32 24];
@@ -302,7 +355,7 @@ classdef TwoStageLV
                                 obj TwoStageLV
                         end
 
-                        filename = sprintf("./images/cost/s1 %s - s2 %s.jpg", obj.propellants(1).name, obj.propellants(2).name);
+                        filename = sprintf("./images/cost/%1$s/s1 %1$s - s2 %2$s.jpg", obj.propellants(1).name, obj.propellants(2).name);
 
                         obj.cost_fig.Units = "centimeters";
                         obj.cost_fig.Position = [2 2 32 24];
