@@ -53,16 +53,13 @@ classdef TwoStageLV
         end
 
         methods
-                function obj = TwoStageLV(stage1_propellant, stage2_propellant)
+                function obj = TwoStageLV(propellants)
                         %TWOSTAGELV Construct an instance of this class
                         arguments
-                                % STAGE1_PROPELLANT Propellant used in Stage 1
-                                stage1_propellant PropellantMix
-
-                                % STAGE2_PROPELLANT Propellant used in Stage 2
-                                stage2_propellant PropellantMix
+                                % PROPELLANTS Propellants used in Stages 1 and 2
+                                propellants(1, 2) PropellantMix
                         end
-                        obj.propellants(:) = [stage1_propellant stage2_propellant];
+                        obj.propellants = propellants;
                 end
 
                 function [m, m_in, m_pr, m_0] = calculate_stage_masses(obj, X, DeltaV, m_pl, delta, g)
@@ -339,7 +336,7 @@ classdef TwoStageLV
                                 obj TwoStageLV
                         end
 
-                        filename = sprintf("./images/mass/%1$s/s1 %1$s - s2 %2$s.jpg", obj.propellants(1).name, obj.propellants(2).name);
+                        filename = sprintf("./images/mass/%2$s/s1 %1$s - s2 %2$s.jpg", obj.propellants(1).name, obj.propellants(2).name);
 
                         obj.mass_fig.Units = "centimeters";
                         obj.mass_fig.Position = [2 2 32 24];
@@ -355,7 +352,7 @@ classdef TwoStageLV
                                 obj TwoStageLV
                         end
 
-                        filename = sprintf("./images/cost/%1$s/s1 %1$s - s2 %2$s.jpg", obj.propellants(1).name, obj.propellants(2).name);
+                        filename = sprintf("./images/cost/%2$s/s1 %1$s - s2 %2$s.jpg", obj.propellants(1).name, obj.propellants(2).name);
 
                         obj.cost_fig.Units = "centimeters";
                         obj.cost_fig.Position = [2 2 32 24];
