@@ -81,7 +81,7 @@ classdef TwoStageLV
                                 delta(1, 2) double
 
                                 % G Acceleration due to gravity on Earth
-                                g double = 9.82
+                                g double = 9.81
                         end
 
                         Ve(:) = [
@@ -159,7 +159,7 @@ classdef TwoStageLV
                                 delta(1, 2) double
 
                                 % G Acceleration due to gravity on Earth
-                                g double = 9.82
+                                g double = 9.81
                         end
 
                         for i=1:100
@@ -223,9 +223,8 @@ classdef TwoStageLV
                                 sprintf("Min. Mass Stage 1 $\\Delta V$ Fraction: %.4G", obj.X_m_min)
                                 ];
 
-                        fig = gcf;
                         ax = gca;
-                        fig.Units = "normalized";
+                        obj.mass_fig.Units = "normalized";
                         ax.Units  = "normalized";
                         lgd.Units = "normalized";
 
@@ -239,7 +238,7 @@ classdef TwoStageLV
                         boxW    = max(0.22, 1 - leftX - gap);
                         boxH    = max(0.10, topY - bottomY);
 
-                        ann = annotation(fig, ...
+                        ann = annotation(obj.mass_fig, ...
                                 textbox=[leftX bottomY boxW boxH], ...
                                 String=infoLines, ...
                                 Interpreter="latex", ...
@@ -290,9 +289,8 @@ classdef TwoStageLV
                                 sprintf("Min. Cost Stage 1 $\\Delta V$ Fraction: %.4G", obj.X_c_min)
                                 ];
 
-                        fig = gcf;
                         ax = gca;
-                        fig.Units = "normalized";
+                        obj.cost_fig.Units = "normalized";
                         ax.Units  = "normalized";
                         lgd.Units = "normalized";
 
@@ -306,7 +304,7 @@ classdef TwoStageLV
                         boxW    = max(0.22, 1 - leftX - gap);
                         boxH    = max(0.10, topY - bottomY);
 
-                        ann = annotation(fig, ...
+                        ann = annotation(obj.cost_fig, ...
                                 textbox=[leftX bottomY boxW boxH], ...
                                 String=infoLines, ...
                                 Interpreter="latex", ...
