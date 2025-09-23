@@ -81,7 +81,7 @@ classdef TwoStageLV
                                 delta(1, 2) double
 
                                 % G Acceleration due to gravity on Earth
-                                g double = 9.81
+                                g double
                         end
 
                         Ve(:) = [
@@ -159,7 +159,7 @@ classdef TwoStageLV
                                 delta(1, 2) double
 
                                 % G Acceleration due to gravity on Earth
-                                g double = 9.81
+                                g double
                         end
 
                         for i=1:100
@@ -232,13 +232,13 @@ classdef TwoStageLV
                         lgdpos = lgd.Position;
                         gap   = 0.010;
 
-                        leftX   = max(axpos(1) + axpos(3) + gap, lgdpos(1));
+                        leftX   = axpos(3);
                         bottomY = axpos(2);
                         topY    = lgdpos(2) - gap;
                         boxW    = max(0.22, 1 - leftX - gap);
                         boxH    = max(0.10, topY - bottomY);
 
-                        ann = annotation(obj.mass_fig, ...
+                        annotation(obj.mass_fig, ...
                                 textbox=[leftX bottomY boxW boxH], ...
                                 String=infoLines, ...
                                 Interpreter="latex", ...
@@ -298,13 +298,13 @@ classdef TwoStageLV
                         lgdpos = lgd.Position;
                         gap   = 0.010;
 
-                        leftX   = max(axpos(1) + axpos(3) + gap, lgdpos(1));
+                        leftX   = axpos(3);
                         bottomY = axpos(2);
                         topY    = lgdpos(2) - gap;
                         boxW    = max(0.22, 1 - leftX - gap);
                         boxH    = max(0.10, topY - bottomY);
 
-                        ann = annotation(obj.cost_fig, ...
+                        annotation(obj.cost_fig, ...
                                 textbox=[leftX bottomY boxW boxH], ...
                                 String=infoLines, ...
                                 Interpreter="latex", ...
@@ -337,7 +337,7 @@ classdef TwoStageLV
                         filename = sprintf("./images/mass/%2$s/s1 %1$s - s2 %2$s.jpg", obj.propellants(1).name, obj.propellants(2).name);
 
                         obj.mass_fig.Units = "centimeters";
-                        obj.mass_fig.Position = [2 2 32 24];
+                        obj.mass_fig.Position = [2 2 24 12];
 
                         drawnow;
                         saveas(obj.mass_fig, filename);
@@ -353,7 +353,7 @@ classdef TwoStageLV
                         filename = sprintf("./images/cost/%2$s/s1 %1$s - s2 %2$s.jpg", obj.propellants(1).name, obj.propellants(2).name);
 
                         obj.cost_fig.Units = "centimeters";
-                        obj.cost_fig.Position = [2 2 32 24];
+                        obj.cost_fig.Position = [2 2 24 12];
 
                         drawnow;
                         saveas(obj.cost_fig, filename);

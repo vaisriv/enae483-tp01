@@ -2,8 +2,8 @@
 setup;
 
 % import individual's code
-huy;
 jack;
-jacob;
 matthew;
+huy;
 vai;
+jacob;
