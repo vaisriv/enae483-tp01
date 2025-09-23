@@ -1,0 +1,106 @@
+classDiagram
+    %% ===== core classes =====
+    class PropellantMix {
+        +string name
+        +string displayname
+        +double oxidizer_fuel_mix_mass_ratio
+        +double specific_impulse
+        +double thrust_per_motor_stage1
+        +double thrust_per_motor_stage2
+        +double engine_exhaust_diameter_stage1
+        +double engine_exhaust_diameter_stage2
+        +double chamber_pressure_stage1
+        +double chamber_pressure_stage2
+        +double nozzle_expansion_ratio_stage1
+        +double nozzle_expansion_ratio_stage2
+        +PropellantMix(name, displayname, ox_f_ratio, isp, t1, t2, d1, d2, pc1, pc2, er1, er2)
+    }
+
+    class TwoStageLV {
+        +PropellantMix[2] propellants
+        +double[100] Xs
+        +double[2,100] ms
+        +double[2,100] m_ins
+        +double[2,100] m_prs
+        +double[100] m_0s
+        +double m_0_min
+        +double X_m_min
+        +double i_m_min
+        +double[2,100] costs
+        +double[100] cost_0s
+        +double cost_0_min
+        +double X_c_min
+        +double i_c_min
+        +Figure mass_fig
+        +Figure cost_fig
+
+        +TwoStageLV(propellants)
+        +calculate_stage_masses(X, DeltaV, m_pl, delta, g)
+        +calculate_stage_costs(m_in)
+        +generate_trends(DeltaV, m_pl, delta, g)
+        +generate_mass_fig()
+        +generate_cost_fig()
+        +save_mass_fig()
+        +save_cost_fig()
+    }
+
+    TwoStageLV --> PropellantMix : uses
+
+    %% ===== scripts as callers =====
+    class index {
+        +calls: setup, jack, matthew, huy, vai, jacob
+    }
+
+    class setup {
+        +defines: DeltaV_Total, m_pl, delta, g
+        +defines: propellants: struct<string, PropellantMix>
+        +constructs multiple PropellantMix instances
+    }
+
+    class jack {
+        +stage2 fixed: LOX_LCH4
+        +runs 5 combos vs: LOX_LCH4, LOX_LH2, LOX_RP1, Solid, Storables
+        +for each: generate_trends; save_mass_fig; save_cost_fig
+    }
+
+    class matthew {
+        +stage2 fixed: LOX_LH2
+        +runs 5 combos vs: LOX_LCH4, LOX_LH2, LOX_RP1, Solid, Storables
+        +for each: generate_trends; save_mass_fig; save_cost_fig
+    }
+
+    class huy {
+        +stage2 fixed: LOX_RP1
+        +runs 5 combos vs: LOX_LCH4, LOX_LH2, LOX_RP1, Solid, Storables
+        +for each: generate_trends; save_mass_fig; save_cost_fig
+    }
+
+    class vai {
+        +stage2 fixed: Solid
+        +runs 5 combos vs: LOX_LCH4, LOX_LH2, LOX_RP1, Solid, Storables
+        +for each: generate_trends; save_mass_fig; save_cost_fig
+    }
+
+    class jacob {
+        +stage2 fixed: Storables
+        +runs 5 combos vs: LOX_LCH4, LOX_LH2, LOX_RP1, Solid, Storables
+        +for each: generate_trends; save_mass_fig; save_cost_fig
+    }
+
+    %% ===== control & data flow =====
+    index --> setup : calls
+    index --> jack : calls
+    index --> matthew : calls
+    index --> huy : calls
+    index --> vai : calls
+    index --> jacob : calls
+
+    setup ..> PropellantMix : constructs
+    setup ..> TwoStageLV : provides inputs\n(DeltaV_Total, m_pl, delta, g, propellants)
+
+    jack ..> TwoStageLV : creates & uses
+    matthew ..> TwoStageLV : creates & uses
+    huy ..> TwoStageLV : creates & uses
+    vai ..> TwoStageLV : creates & uses
+    jacob ..> TwoStageLV : creates & uses
+
