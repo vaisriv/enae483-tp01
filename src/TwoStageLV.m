@@ -54,12 +54,32 @@ classdef TwoStageLV
         end
 
         methods
-                function obj = TwoStageLV(propellants)
+                function obj = TwoStageLV(propellants, DeltaV, m_pl, delta, g)
                         %constructor: store provided propellant mixes (2-element array)
                         arguments
                                 propellants(1, 2) PropellantMix
+                                DeltaV double
+                                m_pl double
+                                delta(1, 2) double
+                                g double
                         end
                         obj.propellants = propellants;
+                        obj = obj.run_part_01(DeltaV, m_pl, delta, g);
+                end
+
+                function obj = run_part_01(obj, DeltaV, m_pl, delta, g)
+                        %RUN_PART_01 runs all necessary code for part 01 of
+                        %the LV trade study project
+                        arguments
+                                obj TwoStageLV
+                                DeltaV double
+                                m_pl double
+                                delta(1, 2) double
+                                g double
+                        end
+                        obj = obj.generate_trends(DeltaV, m_pl, delta, g);
+                        obj = obj.save_mass_fig();
+                        obj = obj.save_cost_fig();
                 end
 
                 function [m, m_in, m_pr, m_0] = calculate_stage_masses(obj, X, DeltaV, m_pl, delta, g)

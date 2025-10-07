@@ -1,4 +1,6 @@
 %% Index
+% clear workspace
+clc; clear; close;
 
 % run setup
 setup;
