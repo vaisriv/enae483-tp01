@@ -392,12 +392,12 @@ classdef TwoStageLV
 
                         % same flow as m_* path, using separate c_* fields
                         oxidizer_masses = [
-                                obj.propellants(1).oxidizer_mix_mass_ratio / (obj.propellants(1).oxidizer_mix_mass_ratio + obj.propellants(1).fuel_mix_mass_ratio) * obj.m_prs(1, obj.i_m_min);
-                                obj.propellants(2).oxidizer_mix_mass_ratio / (obj.propellants(2).oxidizer_mix_mass_ratio + obj.propellants(2).fuel_mix_mass_ratio) * obj.m_prs(2, obj.i_m_min);
+                                obj.propellants(1).oxidizer_mix_mass_ratio / (obj.propellants(1).oxidizer_mix_mass_ratio + obj.propellants(1).fuel_mix_mass_ratio) * obj.m_prs(1, obj.i_c_min);
+                                obj.propellants(2).oxidizer_mix_mass_ratio / (obj.propellants(2).oxidizer_mix_mass_ratio + obj.propellants(2).fuel_mix_mass_ratio) * obj.m_prs(2, obj.i_c_min);
                         ];
                         fuel_masses = [
-                                obj.propellants(1).fuel_mix_mass_ratio / (obj.propellants(1).oxidizer_mix_mass_ratio + obj.propellants(1).fuel_mix_mass_ratio) * obj.m_prs(1, obj.i_m_min);
-                                obj.propellants(2).fuel_mix_mass_ratio / (obj.propellants(2).oxidizer_mix_mass_ratio + obj.propellants(2).fuel_mix_mass_ratio) * obj.m_prs(2, obj.i_m_min);
+                                obj.propellants(1).fuel_mix_mass_ratio / (obj.propellants(1).oxidizer_mix_mass_ratio + obj.propellants(1).fuel_mix_mass_ratio) * obj.m_prs(1, obj.i_c_min);
+                                obj.propellants(2).fuel_mix_mass_ratio / (obj.propellants(2).oxidizer_mix_mass_ratio + obj.propellants(2).fuel_mix_mass_ratio) * obj.m_prs(2, obj.i_c_min);
                         ];
                         oxidizer_volumes = [
                                 oxidizer_masses(1)/obj.propellants(1).density_oxidizer;
@@ -432,7 +432,7 @@ classdef TwoStageLV
                         obj.c_length_stages = oxidizer_tank_heights+fuel_tank_heights+inter_tank_heights;
                         obj.c_length_total = payload_height+sum(obj.c_length_stages)+inter_stage_height+aft_height;
 
-                        obj.c_stage_subsystem_masses.propellant = [obj.m_prs(1, obj.i_m_min); obj.m_prs(2, obj.i_m_min)];
+                        obj.c_stage_subsystem_masses.propellant = [obj.m_prs(1, obj.i_c_min); obj.m_prs(2, obj.i_c_min)];
                         obj.c_stage_subsystem_masses.propellant_tanks = [
                                 obj.propellants(1).propellant_tank_mer_oxidizer*oxidizer_volumes(1) + obj.propellants(1).propellant_tank_mer_fuel*fuel_volumes(1);
                                 obj.propellants(2).propellant_tank_mer_oxidizer*oxidizer_volumes(2) + obj.propellants(2).propellant_tank_mer_fuel*fuel_volumes(2);
@@ -454,12 +454,12 @@ classdef TwoStageLV
                                 n*237.8*(obj.propellants(2).thrust_per_motor_stage2/obj.propellants(2).chamber_pressure_stage2)^0.9375;
                         ];
                         obj.c_stage_subsystem_masses.avionics = [
-                                10*obj.ms(1, obj.i_m_min)^0.361;
-                                10*obj.ms(2, obj.i_m_min)^0.361;
+                                10*obj.ms(1, obj.i_c_min)^0.361;
+                                10*obj.ms(2, obj.i_c_min)^0.361;
                         ];
                         obj.c_stage_subsystem_masses.wiring = [
-                                1.058*sqrt(obj.ms(1, obj.i_m_min))*obj.c_length_stages(1)^(0.25);
-                                1.058*sqrt(obj.ms(2, obj.i_m_min))*obj.c_length_stages(2)^(0.25);
+                                1.058*sqrt(obj.ms(1, obj.i_c_min))*obj.c_length_stages(1)^(0.25);
+                                1.058*sqrt(obj.ms(2, obj.i_c_min))*obj.c_length_stages(2)^(0.25);
                         ];
                         obj.c_stage_subsystem_masses.payload_fairing = 4.95*payload_area^1.15;
                         obj.c_stage_subsystem_masses.inter_tank_fairing = [
