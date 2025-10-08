@@ -134,14 +134,12 @@ classdef TwoStageLV
                                 g double
                         end
                         obj = obj.generate_trends(DeltaV, m_pl, delta, g);
-                        % optional: save figures if desired
                         % obj = obj.save_mass_fig();
                         % obj = obj.save_cost_fig();
                 end
 
                 function obj = run_part_02(obj, m_pl, g)
                         %run_part_02 execute part-02 sizing twice (m_* path and c_* path)
-                        % note: m_* and c_* duplicate structure allow independent "what-if" paths
                         arguments
                                 obj TwoStageLV
                                 m_pl double
@@ -158,7 +156,7 @@ classdef TwoStageLV
                         obj = obj.c_calculate_desired_engine_count(m_pl, g);
                         obj = obj.c_estimate_subsystem_masses(obj.c_necessary_engine_count, m_pl);
                         obj = obj.c_calculate_estimated_costs();
-                        obj = obj.save_estimated_mass_table(); % writes the mass table again (by design)
+                        obj = obj.save_estimated_cost_table();
                 end
 
                 function obj = m_estimate_subsystem_masses(obj, n, m_pl)
@@ -322,11 +320,12 @@ classdef TwoStageLV
                         arguments
                                 obj TwoStageLV
                         end
+                        
                         obj.m_estimated_c_stages = [
-                                13.52*obj.m_estimated_m_stages_margin(1)^(0.55)*1e6;
-                                13.52*obj.m_estimated_m_stages_margin(2)^(0.55)*1e6;
+                                13.52*(obj.m_estimated_m_stages_margin(1)-obj.m_stage_subsystem_masses.propellant(1))^(0.55)*1e6;
+                                13.52*(obj.m_estimated_m_stages_margin(2)-obj.m_stage_subsystem_masses.propellant(2))^(0.55)*1e6;
                         ];
-                        obj.m_estimated_c_total = 13.52*obj.m_estimated_m_total_margin^(0.55)*1e6;
+                        obj.m_estimated_c_total = 13.52*(obj.m_estimated_m_total_margin-sum(obj.m_stage_subsystem_masses.propellant))^(0.55)*1e6;
                 end
 
                 function obj = save_estimated_mass_table(obj)
@@ -533,10 +532,10 @@ classdef TwoStageLV
                                 obj TwoStageLV
                         end
                         obj.c_estimated_c_stages = [
-                                13.52*obj.c_estimated_m_stages_margin(1)^(0.55)*1e6;
-                                13.52*obj.c_estimated_m_stages_margin(2)^(0.55)*1e6;
+                                13.52*(obj.c_estimated_m_stages_margin(1)-obj.c_stage_subsystem_masses.propellant(1))^(0.55)*1e6;
+                                13.52*(obj.c_estimated_m_stages_margin(2)-obj.c_stage_subsystem_masses.propellant(2))^(0.55)*1e6;
                         ];
-                        obj.c_estimated_c_total = 13.52*obj.c_estimated_m_total_margin^(0.55)*1e6;
+                        obj.c_estimated_c_total = 13.52*(obj.c_estimated_m_total_margin-sum(obj.c_stage_subsystem_masses.propellant))^(0.55)*1e6;
                 end
 
                 function obj = save_estimated_cost_table(obj)
