@@ -1,7 +1,6 @@
 % TwoStageLV.m
 classdef TwoStageLV
-        %TWOSTAGELV two-stage launch vehicle
-        % class to compute mass & cost trends for a 2-stage vehicle
+        %twostagelv two-stage launch vehicle
 
         properties
                 % propellants: propellant objects for stage1 and stage2 (1x2)
@@ -10,50 +9,47 @@ classdef TwoStageLV
                 % xs: sweep of stage-1 delta-v fraction (1x100)
                 Xs(1, 100) double = linspace(0, 1, 100)
 
-                % ms: stage masses (in kg) for stages [1;2] at each xs (2x100)
+                % ms: total stage masses (kg) for stages [1;2] at each xs (2x100)
                 ms(2, 100) double = zeros(2, 100)
 
-                % m_ins: inert mass of each stage (2x100)
+                % m_ins: inert mass of each stage (kg) (2x100)
                 m_ins(2, 100) double = zeros(2, 100)
 
-                % m_prs: propellant mass of each stage (2x100)
+                % m_prs: propellant mass of each stage (kg) (2x100)
                 m_prs(2, 100) double = zeros(2, 100)
 
-                % m_0s: gross vehicle initial mass for each xs (1x100)
+                % m_0s: gross initial vehicle mass (kg) per xs (1x100)
                 m_0s(1, 100) double = zeros(1, 100)
 
-                % m_0_min: minimum found gross mass (scalar)
+                % m_0_min: minimum gross mass found (kg)
                 m_0_min double = inf
 
-                % x_m_min: xs value that produced min gross mass
+                % x_m_min: xs value that produced m_0_min
                 X_m_min double = 0
 
-                % i_m_min: index in xs for min gross mass
+                % i_m_min: index into xs for m_0_min
                 i_m_min double = 1
 
-                % costs: stage cost arrays (same indexing as ms) (2x100)
+                % costs: per-stage cost arrays (same indexing as ms) (2x100)
                 costs(2, 100) double = zeros(2, 100)
 
-                % cost_0s: total program cost for each xs (1x100)
+                % cost_0s: total program cost per xs (1x100)
                 cost_0s(1, 100) double = zeros(1, 100)
 
-                % cost_0_min: minimum program cost found (scalar)
+                % cost_0_min: minimum program cost found
                 cost_0_min double = inf
 
-                % x_c_min: xs value for minimum cost
+                % x_c_min: xs that produced cost_0_min
                 X_c_min double = 0
 
-                % i_c_min: index for minimum cost
+                % i_c_min: index into xs for cost_0_min
                 i_c_min double = 1
 
-                % mass_fig: handle to generated mass trends figure
+                % figure handles for trends plots
                 mass_fig matlab.ui.Figure
-
-                % cost_fig: handle to generated cost trends figure
                 cost_fig matlab.ui.Figure
 
-                % subsystem_masses: struct of masses (in kg) for each subsystem
-                % for each stage
+                % struct fields are per-subsystem masses [stage1; stage2] except singletons
                 m_stage_subsystem_masses struct = struct( ...
                         "propellant", [0; 0], ...
                         "propellant_tanks", [0; 0], ...
@@ -68,32 +64,20 @@ classdef TwoStageLV
                         "inter_stage_fairing", 0, ...
                         "aft_fairing", 0)
 
-                % estimated_m_stages_margin: total of all subsystem masses (in kg) with a
-                % 30% margin for each stage
-                m_estimated_m_stages_margin(2, 1) double = [0; 0]
-
+                % m_estimated_*: mass rollups (kg) and derived lengths (m)
+                m_estimated_m_stages_margin(2, 1) double = [0; 0]   % with 30% margin on non-propellant
                 m_estimated_m_total_margin double = 0
-
-                m_estimated_m_nrec double = 0
-
-                m_estimated_m_stages(2, 1) double = [0; 0]
-
-                m_estimated_m_total double = 0
-
-                m_estimated_m_nrec_margin double = 0
-
+                m_estimated_m_nrec double = 0                        % payload + common fairings (no margin)
+                m_estimated_m_stages(2, 1) double = [0; 0]           % no-margin per-stage
+                m_estimated_m_total double = 0                        % no-margin total
+                m_estimated_m_nrec_margin double = 0                 % with 30% margin on common items
                 m_length_stages(2, 1) double = 0
-
                 m_length_total double = 0
-
                 m_necessary_engine_count double = 0
-
                 m_estimated_c_stages(2, 1) double = [0; 0]
-
                 m_estimated_c_total double = 0
 
-                % subsystem_masses: struct of masses (in kg) for each subsystem
-                % for each stage
+                % c_*: (cost-oriented) mirror of the above for the second path
                 c_stage_subsystem_masses struct = struct( ...
                         "propellant", [0; 0], ...
                         "propellant_tanks", [0; 0], ...
@@ -108,34 +92,22 @@ classdef TwoStageLV
                         "inter_stage_fairing", 0, ...
                         "aft_fairing", 0)
 
-                % estimated_m_stages_margin: total of all subsystem masses (in kg) with a
-                % 30% margin for each stage
                 c_estimated_m_stages_margin(2, 1) double = [0; 0]
-
                 c_estimated_m_total_margin double = 0
-
                 c_estimated_m_nrec double = 0
-
                 c_estimated_m_stages(2, 1) double = [0; 0]
-
                 c_estimated_m_total double = 0
-
                 c_estimated_m_nrec_margin double = 0
-
                 c_length_stages(2, 1) double = 0
-
                 c_length_total double = 0
-
                 c_necessary_engine_count double = 0
-
                 c_estimated_c_stages(2, 1) double = [0; 0]
-
                 c_estimated_c_total double = 0
         end
 
         methods
                 function obj = TwoStageLV(propellants, DeltaV, m_pl, delta, g)
-                        %constructor: store provided propellant mixes (2-element array)
+                        % constructor: runs part-01 trend sweep then part-02 subsystem sizing
                         arguments
                                 propellants(1, 2) PropellantMix
                                 DeltaV double
@@ -144,17 +116,16 @@ classdef TwoStageLV
                                 g double
                         end
                         obj.propellants = propellants;
-                        
-                        % fprintf("running part 01 for s1 %1$s - s2 %2$s\n", obj.propellants(1).name, obj.propellants(2).name);
+
+                        % part 01: delta-v split sweep, find mass/cost minima, make figs
                         obj = obj.run_part_01(DeltaV, m_pl, delta, g);
 
-                        % fprintf("running part 02 for s1 %1$s - s2 %2$s\n", obj.propellants(1).name, obj.propellants(2).name);
+                        % part 02: engine count, subsystem masses, lengths, margins, costs
                         obj = obj.run_part_02(m_pl, g);
                 end
 
                 function obj = run_part_01(obj, DeltaV, m_pl, delta, g)
-                        %RUN_PART_01 runs all necessary code for part 01 of
-                        %the LV trade study project
+                        %run_part_01 execute part-01 mass/cost trend analysis
                         arguments
                                 obj TwoStageLV
                                 DeltaV double
@@ -163,37 +134,43 @@ classdef TwoStageLV
                                 g double
                         end
                         obj = obj.generate_trends(DeltaV, m_pl, delta, g);
+                        % optional: save figures if desired
                         % obj = obj.save_mass_fig();
                         % obj = obj.save_cost_fig();
                 end
 
                 function obj = run_part_02(obj, m_pl, g)
-                        %RUN_PART_02 runs all necessary code for part 02 of
-                        %the LV trade study project
+                        %run_part_02 execute part-02 sizing twice (m_* path and c_* path)
+                        % note: m_* and c_* duplicate structure allow independent "what-if" paths
                         arguments
                                 obj TwoStageLV
                                 m_pl double
                                 g double
                         end
 
+                        % mass-first path (m_*)
                         obj = obj.m_calculate_desired_engine_count(m_pl, g);
                         obj = obj.m_estimate_subsystem_masses(obj.m_necessary_engine_count, m_pl);
                         obj = obj.m_calculate_estimated_costs();
                         obj = obj.save_estimated_mass_table();
 
+                        % cost-first path (c_*)
                         obj = obj.c_calculate_desired_engine_count(m_pl, g);
                         obj = obj.c_estimate_subsystem_masses(obj.c_necessary_engine_count, m_pl);
                         obj = obj.c_calculate_estimated_costs();
-                        obj = obj.save_estimated_mass_table();
+                        obj = obj.save_estimated_mass_table(); % writes the mass table again (by design)
                 end
 
                 function obj = m_estimate_subsystem_masses(obj, n, m_pl)
+                        %m_estimate_subsystem_masses compute subsystem masses for m_* path
+                        % uses oxidizer/fuel split, volumes, surface areas, and curve-fits
                         arguments
                                 obj TwoStageLV
-                                n double
-                                m_pl double
+                                n double      % engine count
+                                m_pl double   % payload mass (kg)
                         end
 
+                        % split prop mass into oxidizer/fuel using mix ratios
                         oxidizer_masses = [
                                 obj.propellants(1).oxidizer_mix_mass_ratio / (obj.propellants(1).oxidizer_mix_mass_ratio + obj.propellants(1).fuel_mix_mass_ratio) * obj.m_prs(1, obj.i_m_min);
                                 obj.propellants(2).oxidizer_mix_mass_ratio / (obj.propellants(2).oxidizer_mix_mass_ratio + obj.propellants(2).fuel_mix_mass_ratio) * obj.m_prs(2, obj.i_m_min);
@@ -204,46 +181,46 @@ classdef TwoStageLV
                                 obj.propellants(2).fuel_mix_mass_ratio / (obj.propellants(2).oxidizer_mix_mass_ratio + obj.propellants(2).fuel_mix_mass_ratio) * obj.m_prs(2, obj.i_m_min);
                         ];
 
+                        % convert masses to volumes via densities
                         oxidizer_volumes = [
                                 oxidizer_masses(1)/obj.propellants(1).density_oxidizer;
                                 oxidizer_masses(2)/obj.propellants(2).density_oxidizer;
                         ];
-
                         fuel_volumes = [
                                 fuel_masses(1)/obj.propellants(1).density_fuel;
                                 fuel_masses(2)/obj.propellants(2).density_fuel;
                         ];
 
-                        r_tank = 9.8; % [m]
+                        % geometric assumptions for tanks and fairings
+                        r_tank = 9.8; % [m] assumed radius (common to both stages)
 
+                        % payload ogive (area/height model)
                         payload_height = 338/(5*r_tank - 26);
                         payload_area = pi*r_tank*sqrt(r_tank^2+payload_height^2);
 
+                        % cylindrical tank heights (vol = pi*r^2*h) and lateral areas (sa = 2*pi*r*h)
                         oxidizer_tank_heights = oxidizer_volumes./(pi*r_tank^2);
                         oxidizer_tank_areas = 2*pi*r_tank*oxidizer_tank_heights;
 
                         fuel_tank_heights = fuel_volumes./(pi*r_tank^2);
                         fuel_tank_areas = 2*pi*r_tank*fuel_tank_heights;
 
-                        inter_tank_heights = [
-                                1/2*r_tank;
-                                1/2*r_tank;
-                        ];
+                        % spacers and interstage regions
+                        inter_tank_heights = [0.5*r_tank; 0.5*r_tank];
                         inter_tank_areas = 2*pi*r_tank*inter_tank_heights;
 
-                        inter_stage_height = 1/2*r_tank;
+                        inter_stage_height = 0.5*r_tank;
                         inter_stage_area = 2*pi*r_tank*inter_stage_height;
 
-                        aft_height = 1/2*r_tank;
+                        aft_height = 0.5*r_tank;
                         aft_area = 2*pi*r_tank*aft_height;
 
+                        % length bookkeeping (per-stage and total)
                         obj.m_length_stages = oxidizer_tank_heights+fuel_tank_heights+inter_tank_heights;
                         obj.m_length_total = payload_height+sum(obj.m_length_stages)+inter_stage_height+aft_height;
-                        
-                        obj.m_stage_subsystem_masses.propellant = [
-                                obj.m_prs(1, obj.i_m_min);
-                                obj.m_prs(2, obj.i_m_min);
-                        ];
+
+                        % subsystem masses via fits/heuristics
+                        obj.m_stage_subsystem_masses.propellant = [obj.m_prs(1, obj.i_m_min); obj.m_prs(2, obj.i_m_min)];
                         obj.m_stage_subsystem_masses.propellant_tanks = [
                                 obj.propellants(1).propellant_tank_mer_oxidizer*oxidizer_volumes(1) + obj.propellants(1).propellant_tank_mer_fuel*fuel_volumes(1);
                                 obj.propellants(2).propellant_tank_mer_oxidizer*oxidizer_volumes(2) + obj.propellants(2).propellant_tank_mer_fuel*fuel_volumes(2);
@@ -280,6 +257,7 @@ classdef TwoStageLV
                         obj.m_stage_subsystem_masses.inter_stage_fairing = 4.95*inter_stage_area^1.15;
                         obj.m_stage_subsystem_masses.aft_fairing = 4.95*aft_area^1.15;
 
+                        % rollups (no-margin and with 30% margin applied to non-propellant)
                         obj.m_estimated_m_stages = [
                                 obj.m_stage_subsystem_masses.propellant(1)+obj.m_stage_subsystem_masses.propellant_tanks(1)+obj.m_stage_subsystem_masses.propellant_tank_insulation(1)+obj.m_stage_subsystem_masses.engines_or_casing(1)+obj.m_stage_subsystem_masses.thrust_structure(1)+obj.m_stage_subsystem_masses.gimbals(1)+obj.m_stage_subsystem_masses.avionics(1)+obj.m_stage_subsystem_masses.wiring(1)+obj.m_stage_subsystem_masses.inter_tank_fairing(1);
                                 obj.m_stage_subsystem_masses.propellant(2)+obj.m_stage_subsystem_masses.propellant_tanks(2)+obj.m_stage_subsystem_masses.propellant_tank_insulation(2)+obj.m_stage_subsystem_masses.engines_or_casing(2)+obj.m_stage_subsystem_masses.thrust_structure(2)+obj.m_stage_subsystem_masses.gimbals(2)+obj.m_stage_subsystem_masses.avionics(2)+obj.m_stage_subsystem_masses.wiring(2)+obj.m_stage_subsystem_masses.inter_tank_fairing(2);
@@ -296,6 +274,8 @@ classdef TwoStageLV
                 end
 
                 function m_e_or_c = m_calculate_stage_engine_or_casing_mass(obj, stage, T_N, NER)
+                        %m_calculate_stage_engine_or_casing_mass liquid engine or solid case mass
+                        % returns casing mass ~ 13.5% of propellant for solids; otherwise engine fit
                         arguments
                                 obj TwoStageLV
                                 stage double
@@ -306,10 +286,12 @@ classdef TwoStageLV
                                 m_e_or_c = 0.135*obj.m_stage_subsystem_masses.propellant(stage);
                         else
                                 m_e_or_c = 7.81e-4*T_N + 3.37e-5*T_N*sqrt(NER) + 59;
-                        end                 
+                        end
                 end
 
                 function obj = m_calculate_desired_engine_count(obj, m_pl, g)
+                        %m_calculate_desired_engine_count find smallest n meeting thrust margins
+                        % stage 1: t/w >= 1.3 on 1.3*total_with_margin; stage 2: t/w >= 0.76 on upper mass
                         arguments
                                 obj TwoStageLV
                                 m_pl double
@@ -318,20 +300,17 @@ classdef TwoStageLV
 
                         n = 1;
                         valid_engine_count = false;
-                        while not(valid_engine_count)
-                                % fprintf("testing engine count w/ n = %1.0f\n", n);
+                        while ~valid_engine_count
                                 obj = obj.m_estimate_subsystem_masses(n, m_pl);
 
                                 T_valid = [
-                                        obj.propellants(1).thrust_per_motor_stage1 * n >= 1.3 * (1.3*obj.m_estimated_m_total_margin) *g;
-                                        obj.propellants(2).thrust_per_motor_stage2 * n >= 0.76 * (1.3*(obj.m_estimated_m_stages_margin(2)+obj.m_estimated_m_nrec_margin)) * g;   
+                                        obj.propellants(1).thrust_per_motor_stage1 * n >= 1.3 * (1.3*obj.m_estimated_m_total_margin) * g;
+                                        obj.propellants(2).thrust_per_motor_stage2 * n >= 0.76 * (1.3*(obj.m_estimated_m_stages_margin(2)+obj.m_estimated_m_nrec_margin)) * g;
                                 ];
 
-                                if T_valid(1) && T_valid(2)
-                                        % fprintf("valid engine count found at n = %1.0f\n", n);
-                                        valid_engine_count = true;
-                                else
-                                        n = n+1;
+                                valid_engine_count = all(T_valid);
+                                if ~valid_engine_count
+                                        n = n + 1;
                                 end
                         end
 
@@ -339,6 +318,7 @@ classdef TwoStageLV
                 end
 
                 function obj = m_calculate_estimated_costs(obj)
+                        %m_calculate_estimated_costs cost via power law on mass-with-margin
                         arguments
                                 obj TwoStageLV
                         end
@@ -350,6 +330,7 @@ classdef TwoStageLV
                 end
 
                 function obj = save_estimated_mass_table(obj)
+                        %save_estimated_mass_table write csv for the m_* path mass breakdown
                         estimated_mass_table = table( ...
                                 [obj.m_stage_subsystem_masses.propellant(1); obj.m_stage_subsystem_masses.propellant(2); sum(obj.m_stage_subsystem_masses.propellant)], ...
                                 [obj.m_stage_subsystem_masses.propellant_tanks(1); obj.m_stage_subsystem_masses.propellant_tanks(2); sum(obj.m_stage_subsystem_masses.propellant_tanks)], ...
@@ -393,34 +374,36 @@ classdef TwoStageLV
                                         "Stage Cost [B$USD]";
                                 ]);
 
+                        % format numeric columns to 3 significant digits
                         idx = vartype("numeric");
                         estimated_mass_table{:, idx} = round(estimated_mass_table{:, idx}, 3, "significant");
+
+                        % write csv under ./tables/mass/<s2>/s1 <s1> - s2 <s2>.csv
                         filename = sprintf("./tables/mass/%2$s/s1 %1$s - s2 %2$s.csv", obj.propellants(1).name, obj.propellants(2).name);
                         writetable(estimated_mass_table, filename);
                 end
 
                 function obj = c_estimate_subsystem_masses(obj, n, m_pl)
+                        %c_estimate_subsystem_masses compute subsystem masses for c_* path
                         arguments
                                 obj TwoStageLV
                                 n double
                                 m_pl double
                         end
 
+                        % same flow as m_* path, using separate c_* fields
                         oxidizer_masses = [
                                 obj.propellants(1).oxidizer_mix_mass_ratio / (obj.propellants(1).oxidizer_mix_mass_ratio + obj.propellants(1).fuel_mix_mass_ratio) * obj.m_prs(1, obj.i_m_min);
                                 obj.propellants(2).oxidizer_mix_mass_ratio / (obj.propellants(2).oxidizer_mix_mass_ratio + obj.propellants(2).fuel_mix_mass_ratio) * obj.m_prs(2, obj.i_m_min);
                         ];
-
                         fuel_masses = [
                                 obj.propellants(1).fuel_mix_mass_ratio / (obj.propellants(1).oxidizer_mix_mass_ratio + obj.propellants(1).fuel_mix_mass_ratio) * obj.m_prs(1, obj.i_m_min);
                                 obj.propellants(2).fuel_mix_mass_ratio / (obj.propellants(2).oxidizer_mix_mass_ratio + obj.propellants(2).fuel_mix_mass_ratio) * obj.m_prs(2, obj.i_m_min);
                         ];
-
                         oxidizer_volumes = [
                                 oxidizer_masses(1)/obj.propellants(1).density_oxidizer;
                                 oxidizer_masses(2)/obj.propellants(2).density_oxidizer;
                         ];
-
                         fuel_volumes = [
                                 fuel_masses(1)/obj.propellants(1).density_fuel;
                                 fuel_masses(2)/obj.propellants(2).density_fuel;
@@ -428,6 +411,7 @@ classdef TwoStageLV
 
                         r_tank = 9.8; % [m]
 
+                        % same geometry assumptions
                         payload_height = 338/(5*r_tank - 26);
                         payload_area = pi*r_tank*sqrt(r_tank^2+payload_height^2);
 
@@ -437,25 +421,19 @@ classdef TwoStageLV
                         fuel_tank_heights = fuel_volumes./(pi*r_tank^2);
                         fuel_tank_areas = 2*pi*r_tank*fuel_tank_heights;
 
-                        inter_tank_heights = [
-                                1/2*r_tank;
-                                1/2*r_tank;
-                        ];
+                        inter_tank_heights = [0.5*r_tank; 0.5*r_tank];
                         inter_tank_areas = 2*pi*r_tank*inter_tank_heights;
 
-                        inter_stage_height = 1/2*r_tank;
+                        inter_stage_height = 0.5*r_tank;
                         inter_stage_area = 2*pi*r_tank*inter_stage_height;
 
-                        aft_height = 1/2*r_tank;
+                        aft_height = 0.5*r_tank;
                         aft_area = 2*pi*r_tank*aft_height;
 
                         obj.c_length_stages = oxidizer_tank_heights+fuel_tank_heights+inter_tank_heights;
                         obj.c_length_total = payload_height+sum(obj.c_length_stages)+inter_stage_height+aft_height;
-                        
-                        obj.c_stage_subsystem_masses.propellant = [
-                                obj.m_prs(1, obj.i_m_min);
-                                obj.m_prs(2, obj.i_m_min);
-                        ];
+
+                        obj.c_stage_subsystem_masses.propellant = [obj.m_prs(1, obj.i_m_min); obj.m_prs(2, obj.i_m_min)];
                         obj.c_stage_subsystem_masses.propellant_tanks = [
                                 obj.propellants(1).propellant_tank_mer_oxidizer*oxidizer_volumes(1) + obj.propellants(1).propellant_tank_mer_fuel*fuel_volumes(1);
                                 obj.propellants(2).propellant_tank_mer_oxidizer*oxidizer_volumes(2) + obj.propellants(2).propellant_tank_mer_fuel*fuel_volumes(2);
@@ -465,8 +443,8 @@ classdef TwoStageLV
                                 obj.propellants(2).propellant_tank_insulation_mer_oxidizer*oxidizer_tank_areas(2) + obj.propellants(2).propellant_tank_insulation_mer_fuel*fuel_tank_areas(2);
                         ];
                         obj.c_stage_subsystem_masses.engines_or_casing = [
-                                n*m_calculate_stage_engine_or_casing_mass(obj, 1, obj.propellants(1).thrust_per_motor_stage1, obj.propellants(1).nozzle_expansion_ratio_stage1);
-                                n*m_calculate_stage_engine_or_casing_mass(obj, 2, obj.propellants(2).thrust_per_motor_stage2, obj.propellants(2).nozzle_expansion_ratio_stage2);
+                                n*c_calculate_stage_engine_or_casing_mass(obj, 1, obj.propellants(1).thrust_per_motor_stage1, obj.propellants(1).nozzle_expansion_ratio_stage1);
+                                n*c_calculate_stage_engine_or_casing_mass(obj, 2, obj.propellants(2).thrust_per_motor_stage2, obj.propellants(2).nozzle_expansion_ratio_stage2);
                         ];
                         obj.c_stage_subsystem_masses.thrust_structure = [
                                 n*2.55e-4*obj.propellants(1).thrust_per_motor_stage1;
@@ -508,6 +486,7 @@ classdef TwoStageLV
                 end
 
                 function m_e_or_c = c_calculate_stage_engine_or_casing_mass(obj, stage, T_N, NER)
+                        %c_calculate_stage_engine_or_casing_mass identical to m_* but for c_* path
                         arguments
                                 obj TwoStageLV
                                 stage double
@@ -518,10 +497,11 @@ classdef TwoStageLV
                                 m_e_or_c = 0.135*obj.c_stage_subsystem_masses.propellant(stage);
                         else
                                 m_e_or_c = 7.81e-4*T_N + 3.37e-5*T_N*sqrt(NER) + 59;
-                        end                 
+                        end
                 end
 
                 function obj = c_calculate_desired_engine_count(obj, m_pl, g)
+                        %c_calculate_desired_engine_count same thrust-margin search for c_* path
                         arguments
                                 obj TwoStageLV
                                 m_pl double
@@ -530,20 +510,17 @@ classdef TwoStageLV
 
                         n = 1;
                         valid_engine_count = false;
-                        while not(valid_engine_count)
-                                % fprintf("testing engine count w/ n = %1.0f\n", n);
+                        while ~valid_engine_count
                                 obj = obj.c_estimate_subsystem_masses(n, m_pl);
 
                                 T_valid = [
-                                        obj.propellants(1).thrust_per_motor_stage1 * n >= 1.3 * (1.3*obj.c_estimated_m_total_margin) *g;
-                                        obj.propellants(2).thrust_per_motor_stage2 * n >= 0.76 * (1.3*(obj.c_estimated_m_stages_margin(2)+obj.c_estimated_m_nrec_margin)) * g;   
+                                        obj.propellants(1).thrust_per_motor_stage1 * n >= 1.3 * (1.3*obj.c_estimated_m_total_margin) * g;
+                                        obj.propellants(2).thrust_per_motor_stage2 * n >= 0.76 * (1.3*(obj.c_estimated_m_stages_margin(2)+obj.c_estimated_m_nrec_margin)) * g;
                                 ];
 
-                                if T_valid(1) && T_valid(2)
-                                        % fprintf("valid engine count found at n = %1.0f\n", n);
-                                        valid_engine_count = true;
-                                else
-                                        n = n+1;
+                                valid_engine_count = all(T_valid);
+                                if ~valid_engine_count
+                                        n = n + 1;
                                 end
                         end
 
@@ -551,6 +528,7 @@ classdef TwoStageLV
                 end
 
                 function obj = c_calculate_estimated_costs(obj)
+                        %c_calculate_estimated_costs cost for c_* path based on masses-with-margin
                         arguments
                                 obj TwoStageLV
                         end
@@ -562,6 +540,7 @@ classdef TwoStageLV
                 end
 
                 function obj = save_estimated_cost_table(obj)
+                        %save_estimated_cost_table write csv for the c_* path mass/cost breakdown
                         estimated_cost_table = table( ...
                                 [obj.c_stage_subsystem_masses.propellant(1); obj.c_stage_subsystem_masses.propellant(2); sum(obj.c_stage_subsystem_masses.propellant)], ...
                                 [obj.c_stage_subsystem_masses.propellant_tanks(1); obj.c_stage_subsystem_masses.propellant_tanks(2); sum(obj.c_stage_subsystem_masses.propellant_tanks)], ...
@@ -572,7 +551,7 @@ classdef TwoStageLV
                                 [obj.c_stage_subsystem_masses.avionics(1); obj.c_stage_subsystem_masses.avionics(2); sum(obj.c_stage_subsystem_masses.avionics)], ...
                                 [obj.c_stage_subsystem_masses.wiring(1); obj.c_stage_subsystem_masses.wiring(2); sum(obj.c_stage_subsystem_masses.wiring)], ...
                                 ["-"; "-"; obj.c_stage_subsystem_masses.payload_fairing], ...
-                                [obj.c_stage_subsystem_masses.inter_tank_fairing(1); obj.c_stage_subsystem_masses.engines_or_casing(2); sum(obj.c_stage_subsystem_masses.engines_or_casing)], ...
+                                [obj.c_stage_subsystem_masses.inter_tank_fairing(1); obj.c_stage_subsystem_masses.inter_tank_fairing(2); sum(obj.c_stage_subsystem_masses.inter_tank_fairing)], ...
                                 ["-"; "-"; obj.c_stage_subsystem_masses.inter_stage_fairing], ...
                                 ["-"; "-"; obj.c_stage_subsystem_masses.aft_fairing], ...
                                 [obj.c_estimated_m_stages(1); obj.c_estimated_m_stages(2); obj.c_estimated_m_total], ...
@@ -612,20 +591,7 @@ classdef TwoStageLV
                 end
 
                 function [m, m_in, m_pr, m_0] = calculate_stage_masses(obj, X, DeltaV, m_pl, delta, g)
-                        %CALCULATE_STAGE_MASSES compute masses for a given split X
-                        %
-                        % inputs:
-                        %   x       - fraction of total delta-v assigned to stage1
-                        %   deltav  - total mission delta-v (same units as ve*ln)
-                        %   m_pl    - payload mass (scalar)
-                        %   delta   - inert mass fraction vector for stages [1,2]
-                        %   g       - gravitational accel used to convert isp->ve
-                        %
-                        % outputs:
-                        %   m       - stage dry+prop masses [m1; m2]
-                        %   m_in    - inert masses for each stage
-                        %   m_pr    - propellant masses for each stage
-                        %   m_0     - gross initial vehicle mass (stage1 initial mass)
+                        %calculate_stage_masses compute per-stage masses for a given x split
                         arguments
                                 obj TwoStageLV
                                 X double
@@ -635,85 +601,47 @@ classdef TwoStageLV
                                 g double
                         end
 
-                        % effective exhaust velocities for each stage: ve = isp * g
-                        Ve(:) = [
-                                g*obj.propellants(1).specific_impulse ...
-                                g*obj.propellants(2).specific_impulse
-                        ];
+                        % ve per stage (m/s): ve = isp * g
+                        Ve(:) = [g*obj.propellants(1).specific_impulse, g*obj.propellants(2).specific_impulse];
 
-                        % split the total delta-v into stage1 and stage2 pieces
-                        DV(:) = [
-                                X*DeltaV ...
-                                (1-X)*DeltaV
-                        ];
+                        % delta-v split across stages
+                        DV(:) = [X*DeltaV, (1-X)*DeltaV];
 
-                        % mass-ratio exponentials for each stage: r = exp(-DV/Ve)
-                        r(:) = [
-                                exp(-DV(1)/Ve(1)) ...
-                                exp(-DV(2)/Ve(2))
-                        ];
+                        % rocket eqn mass ratios
+                        r(:) = [exp(-DV(1)/Ve(1)), exp(-DV(2)/Ve(2))];
 
-                        % lambda = r - inert_fraction (used to algebraically solve masses)
-                        lambda(:) = [
-                                r(1) - delta(1) ...
-                                r(2) - delta(2)
-                        ];
+                        % helper lambda = r - delta (closed-form solution)
+                        lambda(:) = [r(1) - delta(1), r(2) - delta(2)];
 
-                        % solve upward from payload: stage2 initial mass m_o2 = m_pl / lambda2
+                        % initial masses per stage (propagate upward from payload)
                         m_o(2) = m_pl/lambda(2);
-                        % stage1 initial mass found by dividing by lambda1
                         m_o(1) = m_o(2)/lambda(1);
 
-                        % inert (structural) mass for each stage = delta * m_o(stage)
-                        m_in(:) = [
-                                delta(1)*m_o(1) ...
-                                delta(2)*m_o(2)
-                        ];
+                        % inert per stage
+                        m_in(:) = [delta(1)*m_o(1), delta(2)*m_o(2)];
 
-                        % propellant masses: stage1 prop = m_o1 - m_o2 - m_in1
-                        m_pr(:) = [
-                                m_o(1) - m_o(2) - m_in(1) ...
-                                m_o(2) - m_pl - m_in(2)
-                        ];
+                        % propellant per stage
+                        m_pr(:) = [m_o(1) - m_o(2) - m_in(1), m_o(2) - m_pl - m_in(2)];
 
-                        % total stage mass = inert + propellant
-                        m(:) = [
-                                m_in(1) + m_pr(1) ...
-                                m_in(2) + m_pr(2)
-                        ];
+                        % total stage masses (dry+prop)
+                        m(:) = [m_in(1) + m_pr(1), m_in(2) + m_pr(2)];
 
-                        % overall initial mass is stage1 initial mass
+                        % gross initial vehicle mass
                         m_0 = m_o(1);
                 end
 
                 function [cost, cost_0] = calculate_stage_costs(obj, m_in)
-                        %CALCULATE_STAGE_COSTS empirical cost model based on inert mass
-                        %
-                        % inputs:
-                        %   m_in - inert mass vector [m_in1; m_in2]
-                        %
-                        % outputs:
-                        %   cost   - cost per stage (same units as formula)
-                        %   cost_0 - total program cost (sum)
+                        %calculate_stage_costs empirical cost model from inert mass
                         arguments
                                 obj TwoStageLV
                                 m_in(1, 2) double
                         end
-
-                        % simple power-law cost scaling, multiplied by 1e6 to set units
-                        cost(:) = [
-                                13.52*m_in(1)^(0.55)*1e6 ...
-                                13.52*m_in(2)^(0.55)*1e6
-                        ];
-
-                        % total program cost
+                        cost(:) = [13.52*m_in(1)^(0.55)*1e6, 13.52*m_in(2)^(0.55)*1e6];
                         cost_0 = cost(1) + cost(2);
                 end
 
                 function obj = generate_trends(obj, DeltaV, m_pl, delta, g)
-                        %GENERATE_TRENDS sweep xs, compute mass & cost trends, and find minima
-                        %
-                        % performs 100 evals over obj.xs, populates object arrays and figs
+                        %generate_trends sweep xs, compute arrays, and track mass/cost minima
                         arguments
                                 obj TwoStageLV
                                 DeltaV double
@@ -723,19 +651,19 @@ classdef TwoStageLV
                         end
 
                         for i=1:100
-                                % compute masses for this xs
-                                [obj.ms(:, i), obj.m_ins(:, i), obj.m_prs(:, i), obj.m_0s(i)] = obj.calculate_stage_masses(obj.Xs(i), DeltaV, m_pl, delta, g);
+                                % masses and gross
+                                [obj.ms(:, i), obj.m_ins(:, i), obj.m_prs(:, i), obj.m_0s(i)] = ...
+                                        obj.calculate_stage_masses(obj.Xs(i), DeltaV, m_pl, delta, g);
 
-                                % only compute cost if inert masses look reasonable (>1 kg)
+                                % costs only when inert masses are physical
                                 if (obj.m_ins(1, i) > 1) && (obj.m_ins(2, i) > 1)
                                         [obj.costs(:, i), obj.cost_0s(i)] = obj.calculate_stage_costs(obj.m_ins(:, i));
                                 else
-                                        % otherwise mark cost as nan
                                         obj.costs(:, i) = [nan nan];
                                         obj.cost_0s(i) = nan;
                                 end
 
-                                % if gross mass is unphysical (<1) mark all masses nan
+                                % guard unphysical gross mass
                                 if (obj.m_0s(i) < 1)
                                         obj.ms(:, i) = [nan nan];
                                         obj.m_ins(:, i) = [nan nan];
@@ -743,14 +671,13 @@ classdef TwoStageLV
                                         obj.m_0s(i) = nan;
                                 end
 
-                                % update minimum gross mass tracker
+                                % update minima trackers
                                 if (obj.m_0s(i) > 1) && (obj.m_0s(i) < obj.m_0_min)
                                         obj.m_0_min = obj.m_0s(i);
                                         obj.X_m_min = obj.Xs(i);
                                         obj.i_m_min = i;
                                 end
 
-                                % update minimum cost tracker
                                 if (obj.cost_0s(i) > 1) && (obj.cost_0s(i) < obj.cost_0_min)
                                         obj.cost_0_min = obj.cost_0s(i);
                                         obj.X_c_min = obj.Xs(i);
@@ -758,13 +685,13 @@ classdef TwoStageLV
                                 end
                         end
 
-                        % generate figure objects (saved in obj)
+                        % generate figures (hidden)
                         obj = obj.generate_mass_fig();
                         obj = obj.generate_cost_fig();
                 end
 
                 function obj = generate_mass_fig(obj)
-                        %GENERATE_MASS_FIG create a hidden figure summarizing mass trends
+                        %generate_mass_fig build hidden figure for mass trends
                         arguments
                                 obj TwoStageLV
                         end
@@ -772,72 +699,50 @@ classdef TwoStageLV
                         obj.mass_fig = figure('visible','off');
                         hold on;
 
-                        % plot gross vehicle mass and per-stage masses (converted to tonnes)
+                        % masses in tonnes; mark minimum with a dot
                         plot(obj.Xs, obj.m_0s/1e3, Color="red", LineStyle="-", MarkerEdgeColor="black", Marker=".", MarkerIndices=obj.i_m_min);
                         plot(obj.Xs, obj.ms(1, :)/1e3, Color="blue");
                         plot(obj.Xs, obj.ms(2, :)/1e3, Color="green");
 
-                        % legend with latex interpreter
-                        lgd = legend( ...
-                                "Gross Vehicle Mass", ...
-                                "$1^{\mathrm{st}}$ Stage Mass", ...
-                                "$2^{\mathrm{nd}}$ Stage Mass", ...
-                                Interpreter="latex", ...
-                                Location="northeastoutside");
+                        lgd = legend("Gross Vehicle Mass", "$1^{\mathrm{st}}$ Stage Mass", "$2^{\mathrm{nd}}$ Stage Mass", ...
+                                Interpreter="latex", Location="northeastoutside");
 
-                        % info lines displayed in an annotation textbox (uses latex formatting)
                         infoLines = [
                                 sprintf("Minimum Gross Vehicle Mass: %.4G $\\mathrm{[t]}$", obj.m_0_min/1e3);
                                 sprintf("Min. Mass Program Cost: %.4G $\\mathrm{[\\$B2025]}$", obj.cost_0s(obj.i_m_min)/1e9);
                                 sprintf("Min. Mass Stage 1 $\\Delta V$ Fraction: %.4G", obj.X_m_min)
                         ];
 
-                        % normalize positions so annotation can be placed outside the axis
+                        % layout helpers for the info textbox
                         ax = gca;
                         obj.mass_fig.Units = "normalized";
                         ax.Units  = "normalized";
                         lgd.Units = "normalized";
 
-                        % compute textbox position to the right of the axes and below legend
                         axpos = ax.Position;
                         lgdpos = lgd.Position;
                         gap = 0.010;
 
-                        leftX = axpos(3); % x start just to the right of axis width
-                        bottomY = axpos(2); % same bottom as axis
-                        topY = lgdpos(2) - gap; % top limited by legend top minus gap
-                        boxW = max(0.22, 1 - leftX - gap); % ensure textbox width reasonable
-                        boxH = max(0.10, topY - bottomY); % ensure textbox height reasonable
+                        leftX = axpos(3);
+                        bottomY = axpos(2);
+                        topY = lgdpos(2) - gap;
+                        boxW = max(0.22, 1 - leftX - gap);
+                        boxH = max(0.10, topY - bottomY);
 
-                        % add annotation textbox with the info lines
-                        annotation(obj.mass_fig, ...
-                                textbox=[leftX bottomY boxW boxH], ...
-                                String=infoLines, ...
-                                Interpreter="latex", ...
-                                FitBoxToText="on", ...
-                                VerticalAlignment="middle", ...
-                                FontSize=10);
+                        annotation(obj.mass_fig, textbox=[leftX bottomY boxW boxH], String=infoLines, ...
+                                Interpreter="latex", FitBoxToText="on", VerticalAlignment="middle", FontSize=10);
 
-                        % axis labels and limits
-                        xlim([0 1]);
-                        xlabel("$X$", Interpreter="latex");
+                        xlim([0 1]); xlabel("$X$", Interpreter="latex");
+                        ylim([0 obj.m_0_min/1e3*2]); ylabel("$m \mathrm{[t]}$", Interpreter="latex");
 
-                        ylim([0 obj.m_0_min/1e3*2]); % y-lim set to twice the minimum gross mass (tonnes)
-                        ylabel("$m \mathrm{[t]}$", Interpreter="latex");
-
-                        % set title using propellant display names
                         set(gca,'TickLabelInterpreter','latex');
-                        title(sprintf( ...
-                                "Mass Trends for $1^{\\mathrm{st}}$ Stage: %s; $2^{\\mathrm{nd}}$ Stage: %s", ...
-                                obj.propellants(1).displayname, ...
-                                obj.propellants(2).displayname), ...
-                                Interpreter="latex");
-
+                        title(sprintf("Mass Trends for $1^{\\mathrm{st}}$ Stage: %s; $2^{\\mathrm{nd}}$ Stage: %s", ...
+                                obj.propellants(1).displayname, obj.propellants(2).displayname), Interpreter="latex");
                         hold off;
                 end
 
                 function obj = generate_cost_fig(obj)
-                        %GENERATE_COST_FIG create hidden figure summarizing cost trends
+                        %generate_cost_fig build hidden figure for cost trends
                         arguments
                                 obj TwoStageLV
                         end
@@ -845,18 +750,12 @@ classdef TwoStageLV
                         obj.cost_fig = figure('visible','off');
                         hold on;
 
-                        % plot total program cost and per-stage costs (converted to billion dollars)
                         plot(obj.Xs, obj.cost_0s(:)/1e9, Color="red", LineStyle="-", MarkerEdgeColor="black", Marker=".", MarkerIndices=obj.i_c_min);
                         plot(obj.Xs, obj.costs(1, :)/1e9, Color="blue");
                         plot(obj.Xs, obj.costs(2, :)/1e9, Color="green");
 
-                        % legend and info textbox similar to mass figure
-                        lgd = legend( ...
-                                "Program Cost", ...
-                                "$1^{\mathrm{st}}$ Stage Cost", ...
-                                "$2^{\mathrm{nd}}$ Stage Cost", ...
-                                Interpreter="latex", ...
-                                Location="northeastoutside");
+                        lgd = legend("Program Cost", "$1^{\mathrm{st}}$ Stage Cost", "$2^{\mathrm{nd}}$ Stage Cost", ...
+                                Interpreter="latex", Location="northeastoutside");
 
                         infoLines = [
                                 sprintf("Minimum Program Cost: %.4G $\\mathrm{[\\$B2025]}$", obj.cost_0_min/1e9);
@@ -879,59 +778,39 @@ classdef TwoStageLV
                         boxW = max(0.22, 1 - leftX - gap);
                         boxH = max(0.10, topY - bottomY);
 
-                        annotation(obj.cost_fig, ...
-                                textbox=[leftX bottomY boxW boxH], ...
-                                String=infoLines, ...
-                                Interpreter="latex", ...
-                                FitBoxToText="on", ...
-                                VerticalAlignment="middle", ...
-                                FontSize=10);
+                        annotation(obj.cost_fig, textbox=[leftX bottomY boxW boxH], String=infoLines, ...
+                                Interpreter="latex", FitBoxToText="on", VerticalAlignment="middle", FontSize=10);
 
-                        xlim([0 1]);
-                        xlabel("$X$", Interpreter="latex")
-                        ylim([0 obj.cost_0_min/1e9*2]); % ylim set to twice the minimum program cost (billion $)
-                        ylabel("$\mathrm{Cost} \mathrm{[\$B2025]}$", Interpreter="latex")
+                        xlim([0 1]); xlabel("$X$", Interpreter="latex");
+                        ylim([0 obj.cost_0_min/1e9*2]); ylabel("$\mathrm{Cost} \mathrm{[\$B2025]}$", Interpreter="latex");
 
-                        title(sprintf( ...
-                                "Cost Trends for $1^{\\mathrm{st}}$ Stage: %s; $2^{\\mathrm{nd}}$ Stage: %s", ...
-                                obj.propellants(1).displayname, ...
-                                obj.propellants(2).displayname), ...
-                                Interpreter="latex")
+                        title(sprintf("Cost Trends for $1^{\\mathrm{st}}$ Stage: %s; $2^{\\mathrm{nd}}$ Stage: %s", ...
+                                obj.propellants(1).displayname, obj.propellants(2).displayname), Interpreter="latex");
 
                         set(gca,'TickLabelInterpreter','latex');
                         hold off;
                 end
 
                 function obj = save_mass_fig(obj)
-                        %SAVE_MASS_FIG save mass figure to disk with fixed dimensions
+                        %save_mass_fig persist mass trends figure (fixed size)
                         arguments
                                 obj TwoStageLV
                         end
-
-                        % filename uses propellant short names (stage1, stage2) in folder structure
                         filename = sprintf("./images/mass/%2$s/s1 %1$s - s2 %2$s.jpg", obj.propellants(1).name, obj.propellants(2).name);
-
-                        % set figure size in centimeters then save
                         obj.mass_fig.Units = "centimeters";
                         obj.mass_fig.Position = [2 2 24 12];
-
-                        drawnow; % ensure rendering is flushed
-                        saveas(obj.mass_fig, filename);
+                        drawnow; saveas(obj.mass_fig, filename);
                 end
 
                 function obj = save_cost_fig(obj)
-                        %SAVE_COST_FIG save cost figure to disk with fixed dimensions
+                        %save_cost_fig persist cost trends figure (fixed size)
                         arguments
                                 obj TwoStageLV
                         end
-
                         filename = sprintf("./images/cost/%2$s/s1 %1$s - s2 %2$s.jpg", obj.propellants(1).name, obj.propellants(2).name);
-
                         obj.cost_fig.Units = "centimeters";
                         obj.cost_fig.Position = [2 2 24 12];
-
-                        drawnow;
-                        saveas(obj.cost_fig, filename);
+                        drawnow; saveas(obj.cost_fig, filename);
                 end
         end
 end
