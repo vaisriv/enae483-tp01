@@ -68,8 +68,6 @@ classdef PropellantMix
         methods
                 function obj = PropellantMix(name, displayname, oxidizer_mix_mass_ratio, fuel_mix_mass_ratio, specific_impulse, thrust_per_motor_stage1, thrust_per_motor_stage2, engine_exhaust_diameter_stage1, engine_exhaust_diameter_stage2, chamber_pressure_stage1, chamber_pressure_stage2, nozzle_expansion_ratio_stage1, nozzle_expansion_ratio_stage2, density_oxidizer, density_fuel, propellant_tank_mer_oxidizer, propellant_tank_mer_fuel, propellant_tank_insulation_mer_oxidizer, propellant_tank_insulation_mer_fuel, is_solid)
                         %constructor: assign all properties from inputs
-                        %
-                        % usage: p = PropellantMix(name, displayname, ox_f_ratio, isp, t1, t2, d1, d2, pc1, pc2, er1, er2)
                         obj.name = name;
                         obj.displayname = displayname;
                         obj.oxidizer_mix_mass_ratio = oxidizer_mix_mass_ratio;

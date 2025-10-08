@@ -1,0 +1,4 @@
+Propellant [kg],Propellant Tank [kg],Propellant Tank Insulation [kg],Engines/Casing [kg],Thrust Structure [kg],Gimbals [kg],Avionics [kg],Wiring [kg],Payload Fairing [kg],Inter-Tank Fairing [kg],Inter-Stage Fairing [kg],Aft Fairing [kg],Stage Mass [kg],Stage Mass w/ Margin [kg],Inert Mass [kg],Inert Mass w/ Margin [kg],Stage Length [m],Engine Count [-],Stage Cost [M$USD]
+5060000,139000,6840,107000,24700,1300,2720,6660,-,3520,-,-,5360000,5440000,292000,379000,51.2,-,68.5
+267000,2750,4.62e-11,6850,888,78.9,940,882,-,6850,-,-,283000,287000,15900,20700,5.65,-,13.6
+5330000,141000,6840,114000,25600,1370,3660,7540,6924.3368,114000,3516.7988,3516.7988,5680000,5770000,348000,444000,81.3,52,70.8

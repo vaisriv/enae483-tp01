@@ -54,7 +54,7 @@ classdef TwoStageLV
 
                 % subsystem_masses: struct of masses (in kg) for each subsystem
                 % for each stage
-                stage_subsystem_masses struct = struct( ...
+                m_stage_subsystem_masses struct = struct( ...
                         "propellant", [0; 0], ...
                         "propellant_tanks", [0; 0], ...
                         "propellant_tank_insulation", [0; 0], ...
@@ -70,23 +70,67 @@ classdef TwoStageLV
 
                 % estimated_m_stages_margin: total of all subsystem masses (in kg) with a
                 % 30% margin for each stage
-                estimated_m_stages_margin(2, 1) double = [0; 0]
+                m_estimated_m_stages_margin(2, 1) double = [0; 0]
 
-                estimated_m_total_margin double = 0
+                m_estimated_m_total_margin double = 0
 
-                estimated_m_nrec double = 0
+                m_estimated_m_nrec double = 0
 
-                estimated_m_stages(2, 1) double = [0; 0]
+                m_estimated_m_stages(2, 1) double = [0; 0]
 
-                estimated_m_total double = 0
+                m_estimated_m_total double = 0
 
-                length_total double = 0
+                m_estimated_m_nrec_margin double = 0
 
-                necessary_engine_count double = 0
+                m_length_stages(2, 1) double = 0
 
-                estimated_c_stages(2, 1) double = [0; 0]
+                m_length_total double = 0
 
-                estimated_c_total double = 0
+                m_necessary_engine_count double = 0
+
+                m_estimated_c_stages(2, 1) double = [0; 0]
+
+                m_estimated_c_total double = 0
+
+                % subsystem_masses: struct of masses (in kg) for each subsystem
+                % for each stage
+                c_stage_subsystem_masses struct = struct( ...
+                        "propellant", [0; 0], ...
+                        "propellant_tanks", [0; 0], ...
+                        "propellant_tank_insulation", [0; 0], ...
+                        "engines_or_casing", [0; 0], ...
+                        "thrust_structure", [0; 0], ...
+                        "gimbals", [0; 0], ...
+                        "avionics", [0; 0], ...
+                        "wiring", [0; 0], ...
+                        "payload_fairing", 0, ...
+                        "inter_tank_fairing", [0; 0], ...
+                        "inter_stage_fairing", 0, ...
+                        "aft_fairing", 0)
+
+                % estimated_m_stages_margin: total of all subsystem masses (in kg) with a
+                % 30% margin for each stage
+                c_estimated_m_stages_margin(2, 1) double = [0; 0]
+
+                c_estimated_m_total_margin double = 0
+
+                c_estimated_m_nrec double = 0
+
+                c_estimated_m_stages(2, 1) double = [0; 0]
+
+                c_estimated_m_total double = 0
+
+                c_estimated_m_nrec_margin double = 0
+
+                c_length_stages(2, 1) double = 0
+
+                c_length_total double = 0
+
+                c_necessary_engine_count double = 0
+
+                c_estimated_c_stages(2, 1) double = [0; 0]
+
+                c_estimated_c_total double = 0
         end
 
         methods
@@ -132,11 +176,18 @@ classdef TwoStageLV
                                 g double
                         end
 
-                        obj = obj.calculate_desired_engine_count(m_pl, g);
-                        obj = obj.estimate_subsystem_masses(obj.necessary_engine_count, m_pl);
+                        obj = obj.m_calculate_desired_engine_count(m_pl, g);
+                        obj = obj.m_estimate_subsystem_masses(obj.m_necessary_engine_count, m_pl);
+                        obj = obj.m_calculate_estimated_costs();
+                        obj = obj.save_estimated_mass_table();
+
+                        obj = obj.c_calculate_desired_engine_count(m_pl, g);
+                        obj = obj.c_estimate_subsystem_masses(obj.c_necessary_engine_count, m_pl);
+                        obj = obj.c_calculate_estimated_costs();
+                        obj = obj.save_estimated_mass_table();
                 end
 
-                function obj = estimate_subsystem_masses(obj, n, m_pl)
+                function obj = m_estimate_subsystem_masses(obj, n, m_pl)
                         arguments
                                 obj TwoStageLV
                                 n double
@@ -174,76 +225,77 @@ classdef TwoStageLV
                         fuel_tank_heights = fuel_volumes./(pi*r_tank^2);
                         fuel_tank_areas = 2*pi*r_tank*fuel_tank_heights;
 
-                        intertank_heights = [
+                        inter_tank_heights = [
                                 1/2*r_tank;
                                 1/2*r_tank;
                         ];
-                        intertank_areas = 2*pi*r_tank*intertank_heights;
+                        inter_tank_areas = 2*pi*r_tank*inter_tank_heights;
 
-                        interstage_height = 1/2*r_tank;
-                        interstage_area = 2*pi*r_tank*interstage_height;
+                        inter_stage_height = 1/2*r_tank;
+                        inter_stage_area = 2*pi*r_tank*inter_stage_height;
 
                         aft_height = 1/2*r_tank;
                         aft_area = 2*pi*r_tank*aft_height;
 
-                        ls = oxidizer_tank_heights+fuel_tank_heights+intertank_heights;
-                        obj.length_total = payload_height+sum(ls)+interstage_height+aft_height;
+                        obj.m_length_stages = oxidizer_tank_heights+fuel_tank_heights+inter_tank_heights;
+                        obj.m_length_total = payload_height+sum(obj.m_length_stages)+inter_stage_height+aft_height;
                         
-                        obj.stage_subsystem_masses.propellant = [
+                        obj.m_stage_subsystem_masses.propellant = [
                                 obj.m_prs(1, obj.i_m_min);
                                 obj.m_prs(2, obj.i_m_min);
                         ];
-                        obj.stage_subsystem_masses.propellant_tanks = [
+                        obj.m_stage_subsystem_masses.propellant_tanks = [
                                 obj.propellants(1).propellant_tank_mer_oxidizer*oxidizer_volumes(1) + obj.propellants(1).propellant_tank_mer_fuel*fuel_volumes(1);
                                 obj.propellants(2).propellant_tank_mer_oxidizer*oxidizer_volumes(2) + obj.propellants(2).propellant_tank_mer_fuel*fuel_volumes(2);
                         ];
-                        obj.stage_subsystem_masses.propellant_tank_insulation = [
+                        obj.m_stage_subsystem_masses.propellant_tank_insulation = [
                                 obj.propellants(1).propellant_tank_insulation_mer_oxidizer*oxidizer_tank_areas(1) + obj.propellants(1).propellant_tank_insulation_mer_fuel*fuel_tank_areas(1);
                                 obj.propellants(2).propellant_tank_insulation_mer_oxidizer*oxidizer_tank_areas(2) + obj.propellants(2).propellant_tank_insulation_mer_fuel*fuel_tank_areas(2);
                         ];
-                        obj.stage_subsystem_masses.engines_or_casing = [
-                                n*calculate_stage_engine_or_casing_mass(obj, 1, obj.propellants(1).thrust_per_motor_stage1, obj.propellants(1).nozzle_expansion_ratio_stage1);
-                                n*calculate_stage_engine_or_casing_mass(obj, 2, obj.propellants(2).thrust_per_motor_stage2, obj.propellants(2).nozzle_expansion_ratio_stage2);
+                        obj.m_stage_subsystem_masses.engines_or_casing = [
+                                n*m_calculate_stage_engine_or_casing_mass(obj, 1, obj.propellants(1).thrust_per_motor_stage1, obj.propellants(1).nozzle_expansion_ratio_stage1);
+                                n*m_calculate_stage_engine_or_casing_mass(obj, 2, obj.propellants(2).thrust_per_motor_stage2, obj.propellants(2).nozzle_expansion_ratio_stage2);
                         ];
-                        obj.stage_subsystem_masses.thrust_structure = [
+                        obj.m_stage_subsystem_masses.thrust_structure = [
                                 n*2.55e-4*obj.propellants(1).thrust_per_motor_stage1;
                                 n*2.55e-4*obj.propellants(2).thrust_per_motor_stage2;
                         ];
-                        obj.stage_subsystem_masses.gimbals = [
+                        obj.m_stage_subsystem_masses.gimbals = [
                                 n*237.8*(obj.propellants(1).thrust_per_motor_stage1/obj.propellants(1).chamber_pressure_stage1)^0.9375;
                                 n*237.8*(obj.propellants(2).thrust_per_motor_stage2/obj.propellants(2).chamber_pressure_stage2)^0.9375;
                         ];
-                        obj.stage_subsystem_masses.avionics = [
+                        obj.m_stage_subsystem_masses.avionics = [
                                 10*obj.ms(1, obj.i_m_min)^0.361;
                                 10*obj.ms(2, obj.i_m_min)^0.361;
                         ];
-                        obj.stage_subsystem_masses.wiring = [
-                                1.058*sqrt(obj.ms(1, obj.i_m_min))*ls(1)^(0.25);
-                                1.058*sqrt(obj.ms(2, obj.i_m_min))*ls(2)^(0.25);
+                        obj.m_stage_subsystem_masses.wiring = [
+                                1.058*sqrt(obj.ms(1, obj.i_m_min))*obj.m_length_stages(1)^(0.25);
+                                1.058*sqrt(obj.ms(2, obj.i_m_min))*obj.m_length_stages(2)^(0.25);
                         ];
-                        obj.stage_subsystem_masses.payload_fairing = 4.95*payload_area^1.15;
-                        obj.stage_subsystem_masses.inter_tank_fairing = [
-                                4.95*intertank_areas(1)^1.15;
-                                4.95*intertank_areas(2)^1.15;
+                        obj.m_stage_subsystem_masses.payload_fairing = 4.95*payload_area^1.15;
+                        obj.m_stage_subsystem_masses.inter_tank_fairing = [
+                                4.95*inter_tank_areas(1)^1.15;
+                                4.95*inter_tank_areas(2)^1.15;
                         ];
-                        obj.stage_subsystem_masses.inter_stage_fairing = 4.95*interstage_area^1.15;
-                        obj.stage_subsystem_masses.aft_fairing = 4.95*aft_area^1.15;
+                        obj.m_stage_subsystem_masses.inter_stage_fairing = 4.95*inter_stage_area^1.15;
+                        obj.m_stage_subsystem_masses.aft_fairing = 4.95*aft_area^1.15;
 
-                        obj.estimated_m_stages = [
-                                obj.stage_subsystem_masses.propellant(1)+obj.stage_subsystem_masses.propellant_tanks(1)+obj.stage_subsystem_masses.propellant_tank_insulation(1)+obj.stage_subsystem_masses.engines_or_casing(1)+obj.stage_subsystem_masses.thrust_structure(1)+obj.stage_subsystem_masses.gimbals(1)+obj.stage_subsystem_masses.avionics(1)+obj.stage_subsystem_masses.wiring(1)+obj.stage_subsystem_masses.inter_tank_fairing(1);
-                                obj.stage_subsystem_masses.propellant(2)+obj.stage_subsystem_masses.propellant_tanks(2)+obj.stage_subsystem_masses.propellant_tank_insulation(2)+obj.stage_subsystem_masses.engines_or_casing(2)+obj.stage_subsystem_masses.thrust_structure(2)+obj.stage_subsystem_masses.gimbals(2)+obj.stage_subsystem_masses.avionics(2)+obj.stage_subsystem_masses.wiring(2)+obj.stage_subsystem_masses.inter_tank_fairing(2);
+                        obj.m_estimated_m_stages = [
+                                obj.m_stage_subsystem_masses.propellant(1)+obj.m_stage_subsystem_masses.propellant_tanks(1)+obj.m_stage_subsystem_masses.propellant_tank_insulation(1)+obj.m_stage_subsystem_masses.engines_or_casing(1)+obj.m_stage_subsystem_masses.thrust_structure(1)+obj.m_stage_subsystem_masses.gimbals(1)+obj.m_stage_subsystem_masses.avionics(1)+obj.m_stage_subsystem_masses.wiring(1)+obj.m_stage_subsystem_masses.inter_tank_fairing(1);
+                                obj.m_stage_subsystem_masses.propellant(2)+obj.m_stage_subsystem_masses.propellant_tanks(2)+obj.m_stage_subsystem_masses.propellant_tank_insulation(2)+obj.m_stage_subsystem_masses.engines_or_casing(2)+obj.m_stage_subsystem_masses.thrust_structure(2)+obj.m_stage_subsystem_masses.gimbals(2)+obj.m_stage_subsystem_masses.avionics(2)+obj.m_stage_subsystem_masses.wiring(2)+obj.m_stage_subsystem_masses.inter_tank_fairing(2);
                         ];
-                        obj.estimated_m_nrec = obj.stage_subsystem_masses.payload_fairing+obj.stage_subsystem_masses.inter_stage_fairing+obj.stage_subsystem_masses.aft_fairing+m_pl;
-                        obj.estimated_m_total = sum(obj.estimated_m_stages)+obj.estimated_m_nrec;
+                        obj.m_estimated_m_nrec = m_pl + obj.m_stage_subsystem_masses.payload_fairing+obj.m_stage_subsystem_masses.inter_stage_fairing+obj.m_stage_subsystem_masses.aft_fairing;
+                        obj.m_estimated_m_total = sum(obj.m_estimated_m_stages)+obj.m_estimated_m_nrec;
 
-                        obj.estimated_m_stages_margin = [
-                                obj.stage_subsystem_masses.propellant(1) + 1.3*(obj.stage_subsystem_masses.propellant_tanks(1)+obj.stage_subsystem_masses.propellant_tank_insulation(1)+obj.stage_subsystem_masses.engines_or_casing(1)+obj.stage_subsystem_masses.thrust_structure(1)+obj.stage_subsystem_masses.gimbals(1)+obj.stage_subsystem_masses.avionics(1)+obj.stage_subsystem_masses.wiring(1)+obj.stage_subsystem_masses.inter_tank_fairing(1));
-                                obj.stage_subsystem_masses.propellant(2) + 1.3*(obj.stage_subsystem_masses.propellant_tanks(2)+obj.stage_subsystem_masses.propellant_tank_insulation(2)+obj.stage_subsystem_masses.engines_or_casing(2)+obj.stage_subsystem_masses.thrust_structure(2)+obj.stage_subsystem_masses.gimbals(2)+obj.stage_subsystem_masses.avionics(2)+obj.stage_subsystem_masses.wiring(2)+obj.stage_subsystem_masses.inter_tank_fairing(2));
+                        obj.m_estimated_m_stages_margin = [
+                                obj.m_stage_subsystem_masses.propellant(1) + 1.3*(obj.m_stage_subsystem_masses.propellant_tanks(1)+obj.m_stage_subsystem_masses.propellant_tank_insulation(1)+obj.m_stage_subsystem_masses.engines_or_casing(1)+obj.m_stage_subsystem_masses.thrust_structure(1)+obj.m_stage_subsystem_masses.gimbals(1)+obj.m_stage_subsystem_masses.avionics(1)+obj.m_stage_subsystem_masses.wiring(1)+obj.m_stage_subsystem_masses.inter_tank_fairing(1));
+                                obj.m_stage_subsystem_masses.propellant(2) + 1.3*(obj.m_stage_subsystem_masses.propellant_tanks(2)+obj.m_stage_subsystem_masses.propellant_tank_insulation(2)+obj.m_stage_subsystem_masses.engines_or_casing(2)+obj.m_stage_subsystem_masses.thrust_structure(2)+obj.m_stage_subsystem_masses.gimbals(2)+obj.m_stage_subsystem_masses.avionics(2)+obj.m_stage_subsystem_masses.wiring(2)+obj.m_stage_subsystem_masses.inter_tank_fairing(2));
                         ];
-                        obj.estimated_m_total_margin = sum(obj.estimated_m_stages_margin)+obj.estimated_m_nrec;
+                        obj.m_estimated_m_nrec_margin = m_pl + 1.3*(obj.m_stage_subsystem_masses.payload_fairing+obj.m_stage_subsystem_masses.inter_stage_fairing+obj.m_stage_subsystem_masses.aft_fairing);
+                        obj.m_estimated_m_total_margin = sum(obj.m_estimated_m_stages_margin)+obj.m_estimated_m_nrec_margin;
                 end
 
-                function m_e_or_c = calculate_stage_engine_or_casing_mass(obj, stage, T_N, NER)
+                function m_e_or_c = m_calculate_stage_engine_or_casing_mass(obj, stage, T_N, NER)
                         arguments
                                 obj TwoStageLV
                                 stage double
@@ -251,13 +303,13 @@ classdef TwoStageLV
                                 NER double
                         end
                         if obj.propellants(stage).is_solid
-                                m_e_or_c = 0.135*obj.stage_subsystem_masses.propellant(stage);
+                                m_e_or_c = 0.135*obj.m_stage_subsystem_masses.propellant(stage);
                         else
                                 m_e_or_c = 7.81e-4*T_N + 3.37e-5*T_N*sqrt(NER) + 59;
                         end                 
                 end
 
-                function obj = calculate_desired_engine_count(obj, m_pl, g)
+                function obj = m_calculate_desired_engine_count(obj, m_pl, g)
                         arguments
                                 obj TwoStageLV
                                 m_pl double
@@ -268,11 +320,11 @@ classdef TwoStageLV
                         valid_engine_count = false;
                         while not(valid_engine_count)
                                 % fprintf("testing engine count w/ n = %1.0f\n", n);
-                                obj = obj.estimate_subsystem_masses(n, m_pl);
+                                obj = obj.m_estimate_subsystem_masses(n, m_pl);
 
                                 T_valid = [
-                                        obj.propellants(1).thrust_per_motor_stage1 * n >= 1.3 * (1.3*obj.estimated_m_total) *g;
-                                        obj.propellants(2).thrust_per_motor_stage2 * n >= 0.76 * (1.3*(obj.estimated_m_stages(2)+obj.estimated_m_nrec)) * g;   
+                                        obj.propellants(1).thrust_per_motor_stage1 * n >= 1.3 * (1.3*obj.m_estimated_m_total_margin) *g;
+                                        obj.propellants(2).thrust_per_motor_stage2 * n >= 0.76 * (1.3*(obj.m_estimated_m_stages_margin(2)+obj.m_estimated_m_nrec_margin)) * g;   
                                 ];
 
                                 if T_valid(1) && T_valid(2)
@@ -283,18 +335,280 @@ classdef TwoStageLV
                                 end
                         end
 
-                        obj.necessary_engine_count = n;
+                        obj.m_necessary_engine_count = n;
                 end
 
-                function obj = calculate_estimated_costs(obj)
+                function obj = m_calculate_estimated_costs(obj)
                         arguments
                                 obj TwoStageLV
                         end
-                        obj.estimated_c_stages = [
-                                13.52*obj.estimated_m_stages_margin(1)^(0.55)*1e6;
-                                13.52*obj.estimated_m_stages_margin(2)^(0.55)*1e6;
+                        obj.m_estimated_c_stages = [
+                                13.52*obj.m_estimated_m_stages_margin(1)^(0.55)*1e6;
+                                13.52*obj.m_estimated_m_stages_margin(2)^(0.55)*1e6;
                         ];
-                        obj.estimated_c_total = 13.52*obj.estimated_m_total_margin^(0.55)*1e6;
+                        obj.m_estimated_c_total = 13.52*obj.m_estimated_m_total_margin^(0.55)*1e6;
+                end
+
+                function obj = save_estimated_mass_table(obj)
+                        estimated_mass_table = table( ...
+                                [obj.m_stage_subsystem_masses.propellant(1); obj.m_stage_subsystem_masses.propellant(2); sum(obj.m_stage_subsystem_masses.propellant)], ...
+                                [obj.m_stage_subsystem_masses.propellant_tanks(1); obj.m_stage_subsystem_masses.propellant_tanks(2); sum(obj.m_stage_subsystem_masses.propellant_tanks)], ...
+                                [obj.m_stage_subsystem_masses.propellant_tank_insulation(1); obj.m_stage_subsystem_masses.propellant_tank_insulation(2); sum(obj.m_stage_subsystem_masses.propellant_tank_insulation)], ...
+                                [obj.m_stage_subsystem_masses.engines_or_casing(1); obj.m_stage_subsystem_masses.engines_or_casing(2); sum(obj.m_stage_subsystem_masses.engines_or_casing)], ...
+                                [obj.m_stage_subsystem_masses.thrust_structure(1); obj.m_stage_subsystem_masses.thrust_structure(2); sum(obj.m_stage_subsystem_masses.thrust_structure)], ...
+                                [obj.m_stage_subsystem_masses.gimbals(1); obj.m_stage_subsystem_masses.gimbals(2); sum(obj.m_stage_subsystem_masses.gimbals)], ...
+                                [obj.m_stage_subsystem_masses.avionics(1); obj.m_stage_subsystem_masses.avionics(2); sum(obj.m_stage_subsystem_masses.avionics)], ...
+                                [obj.m_stage_subsystem_masses.wiring(1); obj.m_stage_subsystem_masses.wiring(2); sum(obj.m_stage_subsystem_masses.wiring)], ...
+                                ["-"; "-"; obj.m_stage_subsystem_masses.payload_fairing], ...
+                                [obj.m_stage_subsystem_masses.inter_tank_fairing(1); obj.m_stage_subsystem_masses.inter_tank_fairing(2); sum(obj.m_stage_subsystem_masses.inter_tank_fairing)], ...
+                                ["-"; "-"; obj.m_stage_subsystem_masses.inter_stage_fairing], ...
+                                ["-"; "-"; obj.m_stage_subsystem_masses.aft_fairing], ...
+                                [obj.m_estimated_m_stages(1); obj.m_estimated_m_stages(2); obj.m_estimated_m_total], ...
+                                [obj.m_estimated_m_stages_margin(1); obj.m_estimated_m_stages_margin(2); obj.m_estimated_m_total_margin], ...
+                                [obj.m_estimated_m_stages(1)-obj.m_stage_subsystem_masses.propellant(1); obj.m_estimated_m_stages(2)-obj.m_stage_subsystem_masses.propellant(2); obj.m_estimated_m_total-sum(obj.m_stage_subsystem_masses.propellant)], ...
+                                [obj.m_estimated_m_stages_margin(1)-obj.m_stage_subsystem_masses.propellant(1); obj.m_estimated_m_stages_margin(2)-obj.m_stage_subsystem_masses.propellant(2); obj.m_estimated_m_total_margin-sum(obj.m_stage_subsystem_masses.propellant)], ...
+                                [obj.m_length_stages(1); obj.m_length_stages(2); obj.m_length_total], ...
+                                ["-"; "-"; obj.m_necessary_engine_count], ...
+                                [obj.m_estimated_c_stages(1)/1e9; obj.m_estimated_c_stages(2)/1e9; obj.m_estimated_c_total/1e9], ...
+                                RowNames=["Stage 1", "Stage 2", "Total"], ...
+                                VariableNames=[ ...
+                                        "Propellant [kg]";
+                                        "Propellant Tank [kg]";
+                                        "Propellant Tank Insulation [kg]";
+                                        "Engines/Casing [kg]";
+                                        "Thrust Structure [kg]";
+                                        "Gimbals [kg]";
+                                        "Avionics [kg]";
+                                        "Wiring [kg]";
+                                        "Payload Fairing [kg]";
+                                        "Inter-Tank Fairing [kg]";
+                                        "Inter-Stage Fairing [kg]";
+                                        "Aft Fairing [kg]";
+                                        "Stage Mass [kg]";
+                                        "Stage Mass w/ Margin [kg]";
+                                        "Inert Mass [kg]";
+                                        "Inert Mass w/ Margin [kg]";
+                                        "Stage Length [m]";
+                                        "Engine Count [-]";
+                                        "Stage Cost [B$USD]";
+                                ]);
+
+                        idx = vartype("numeric");
+                        estimated_mass_table{:, idx} = round(estimated_mass_table{:, idx}, 3, "significant");
+                        filename = sprintf("./tables/mass/%2$s/s1 %1$s - s2 %2$s.csv", obj.propellants(1).name, obj.propellants(2).name);
+                        writetable(estimated_mass_table, filename);
+                end
+
+                function obj = c_estimate_subsystem_masses(obj, n, m_pl)
+                        arguments
+                                obj TwoStageLV
+                                n double
+                                m_pl double
+                        end
+
+                        oxidizer_masses = [
+                                obj.propellants(1).oxidizer_mix_mass_ratio / (obj.propellants(1).oxidizer_mix_mass_ratio + obj.propellants(1).fuel_mix_mass_ratio) * obj.m_prs(1, obj.i_m_min);
+                                obj.propellants(2).oxidizer_mix_mass_ratio / (obj.propellants(2).oxidizer_mix_mass_ratio + obj.propellants(2).fuel_mix_mass_ratio) * obj.m_prs(2, obj.i_m_min);
+                        ];
+
+                        fuel_masses = [
+                                obj.propellants(1).fuel_mix_mass_ratio / (obj.propellants(1).oxidizer_mix_mass_ratio + obj.propellants(1).fuel_mix_mass_ratio) * obj.m_prs(1, obj.i_m_min);
+                                obj.propellants(2).fuel_mix_mass_ratio / (obj.propellants(2).oxidizer_mix_mass_ratio + obj.propellants(2).fuel_mix_mass_ratio) * obj.m_prs(2, obj.i_m_min);
+                        ];
+
+                        oxidizer_volumes = [
+                                oxidizer_masses(1)/obj.propellants(1).density_oxidizer;
+                                oxidizer_masses(2)/obj.propellants(2).density_oxidizer;
+                        ];
+
+                        fuel_volumes = [
+                                fuel_masses(1)/obj.propellants(1).density_fuel;
+                                fuel_masses(2)/obj.propellants(2).density_fuel;
+                        ];
+
+                        r_tank = 9.8; % [m]
+
+                        payload_height = 338/(5*r_tank - 26);
+                        payload_area = pi*r_tank*sqrt(r_tank^2+payload_height^2);
+
+                        oxidizer_tank_heights = oxidizer_volumes./(pi*r_tank^2);
+                        oxidizer_tank_areas = 2*pi*r_tank*oxidizer_tank_heights;
+
+                        fuel_tank_heights = fuel_volumes./(pi*r_tank^2);
+                        fuel_tank_areas = 2*pi*r_tank*fuel_tank_heights;
+
+                        inter_tank_heights = [
+                                1/2*r_tank;
+                                1/2*r_tank;
+                        ];
+                        inter_tank_areas = 2*pi*r_tank*inter_tank_heights;
+
+                        inter_stage_height = 1/2*r_tank;
+                        inter_stage_area = 2*pi*r_tank*inter_stage_height;
+
+                        aft_height = 1/2*r_tank;
+                        aft_area = 2*pi*r_tank*aft_height;
+
+                        obj.c_length_stages = oxidizer_tank_heights+fuel_tank_heights+inter_tank_heights;
+                        obj.c_length_total = payload_height+sum(obj.c_length_stages)+inter_stage_height+aft_height;
+                        
+                        obj.c_stage_subsystem_masses.propellant = [
+                                obj.m_prs(1, obj.i_m_min);
+                                obj.m_prs(2, obj.i_m_min);
+                        ];
+                        obj.c_stage_subsystem_masses.propellant_tanks = [
+                                obj.propellants(1).propellant_tank_mer_oxidizer*oxidizer_volumes(1) + obj.propellants(1).propellant_tank_mer_fuel*fuel_volumes(1);
+                                obj.propellants(2).propellant_tank_mer_oxidizer*oxidizer_volumes(2) + obj.propellants(2).propellant_tank_mer_fuel*fuel_volumes(2);
+                        ];
+                        obj.c_stage_subsystem_masses.propellant_tank_insulation = [
+                                obj.propellants(1).propellant_tank_insulation_mer_oxidizer*oxidizer_tank_areas(1) + obj.propellants(1).propellant_tank_insulation_mer_fuel*fuel_tank_areas(1);
+                                obj.propellants(2).propellant_tank_insulation_mer_oxidizer*oxidizer_tank_areas(2) + obj.propellants(2).propellant_tank_insulation_mer_fuel*fuel_tank_areas(2);
+                        ];
+                        obj.c_stage_subsystem_masses.engines_or_casing = [
+                                n*m_calculate_stage_engine_or_casing_mass(obj, 1, obj.propellants(1).thrust_per_motor_stage1, obj.propellants(1).nozzle_expansion_ratio_stage1);
+                                n*m_calculate_stage_engine_or_casing_mass(obj, 2, obj.propellants(2).thrust_per_motor_stage2, obj.propellants(2).nozzle_expansion_ratio_stage2);
+                        ];
+                        obj.c_stage_subsystem_masses.thrust_structure = [
+                                n*2.55e-4*obj.propellants(1).thrust_per_motor_stage1;
+                                n*2.55e-4*obj.propellants(2).thrust_per_motor_stage2;
+                        ];
+                        obj.c_stage_subsystem_masses.gimbals = [
+                                n*237.8*(obj.propellants(1).thrust_per_motor_stage1/obj.propellants(1).chamber_pressure_stage1)^0.9375;
+                                n*237.8*(obj.propellants(2).thrust_per_motor_stage2/obj.propellants(2).chamber_pressure_stage2)^0.9375;
+                        ];
+                        obj.c_stage_subsystem_masses.avionics = [
+                                10*obj.ms(1, obj.i_m_min)^0.361;
+                                10*obj.ms(2, obj.i_m_min)^0.361;
+                        ];
+                        obj.c_stage_subsystem_masses.wiring = [
+                                1.058*sqrt(obj.ms(1, obj.i_m_min))*obj.c_length_stages(1)^(0.25);
+                                1.058*sqrt(obj.ms(2, obj.i_m_min))*obj.c_length_stages(2)^(0.25);
+                        ];
+                        obj.c_stage_subsystem_masses.payload_fairing = 4.95*payload_area^1.15;
+                        obj.c_stage_subsystem_masses.inter_tank_fairing = [
+                                4.95*inter_tank_areas(1)^1.15;
+                                4.95*inter_tank_areas(2)^1.15;
+                        ];
+                        obj.c_stage_subsystem_masses.inter_stage_fairing = 4.95*inter_stage_area^1.15;
+                        obj.c_stage_subsystem_masses.aft_fairing = 4.95*aft_area^1.15;
+
+                        obj.c_estimated_m_stages = [
+                                obj.c_stage_subsystem_masses.propellant(1)+obj.c_stage_subsystem_masses.propellant_tanks(1)+obj.c_stage_subsystem_masses.propellant_tank_insulation(1)+obj.c_stage_subsystem_masses.engines_or_casing(1)+obj.c_stage_subsystem_masses.thrust_structure(1)+obj.c_stage_subsystem_masses.gimbals(1)+obj.c_stage_subsystem_masses.avionics(1)+obj.c_stage_subsystem_masses.wiring(1)+obj.c_stage_subsystem_masses.inter_tank_fairing(1);
+                                obj.c_stage_subsystem_masses.propellant(2)+obj.c_stage_subsystem_masses.propellant_tanks(2)+obj.c_stage_subsystem_masses.propellant_tank_insulation(2)+obj.c_stage_subsystem_masses.engines_or_casing(2)+obj.c_stage_subsystem_masses.thrust_structure(2)+obj.c_stage_subsystem_masses.gimbals(2)+obj.c_stage_subsystem_masses.avionics(2)+obj.c_stage_subsystem_masses.wiring(2)+obj.c_stage_subsystem_masses.inter_tank_fairing(2);
+                        ];
+                        obj.c_estimated_m_nrec = m_pl + obj.c_stage_subsystem_masses.payload_fairing+obj.c_stage_subsystem_masses.inter_stage_fairing+obj.c_stage_subsystem_masses.aft_fairing;
+                        obj.c_estimated_m_total = sum(obj.c_estimated_m_stages)+obj.c_estimated_m_nrec;
+
+                        obj.c_estimated_m_stages_margin = [
+                                obj.c_stage_subsystem_masses.propellant(1) + 1.3*(obj.c_stage_subsystem_masses.propellant_tanks(1)+obj.c_stage_subsystem_masses.propellant_tank_insulation(1)+obj.c_stage_subsystem_masses.engines_or_casing(1)+obj.c_stage_subsystem_masses.thrust_structure(1)+obj.c_stage_subsystem_masses.gimbals(1)+obj.c_stage_subsystem_masses.avionics(1)+obj.c_stage_subsystem_masses.wiring(1)+obj.c_stage_subsystem_masses.inter_tank_fairing(1));
+                                obj.c_stage_subsystem_masses.propellant(2) + 1.3*(obj.c_stage_subsystem_masses.propellant_tanks(2)+obj.c_stage_subsystem_masses.propellant_tank_insulation(2)+obj.c_stage_subsystem_masses.engines_or_casing(2)+obj.c_stage_subsystem_masses.thrust_structure(2)+obj.c_stage_subsystem_masses.gimbals(2)+obj.c_stage_subsystem_masses.avionics(2)+obj.c_stage_subsystem_masses.wiring(2)+obj.c_stage_subsystem_masses.inter_tank_fairing(2));
+                        ];
+                        obj.c_estimated_m_nrec_margin = m_pl + 1.3*(obj.c_stage_subsystem_masses.payload_fairing+obj.c_stage_subsystem_masses.inter_stage_fairing+obj.c_stage_subsystem_masses.aft_fairing);
+                        obj.c_estimated_m_total_margin = sum(obj.c_estimated_m_stages_margin)+obj.c_estimated_m_nrec_margin;
+                end
+
+                function m_e_or_c = c_calculate_stage_engine_or_casing_mass(obj, stage, T_N, NER)
+                        arguments
+                                obj TwoStageLV
+                                stage double
+                                T_N double
+                                NER double
+                        end
+                        if obj.propellants(stage).is_solid
+                                m_e_or_c = 0.135*obj.c_stage_subsystem_masses.propellant(stage);
+                        else
+                                m_e_or_c = 7.81e-4*T_N + 3.37e-5*T_N*sqrt(NER) + 59;
+                        end                 
+                end
+
+                function obj = c_calculate_desired_engine_count(obj, m_pl, g)
+                        arguments
+                                obj TwoStageLV
+                                m_pl double
+                                g double
+                        end
+
+                        n = 1;
+                        valid_engine_count = false;
+                        while not(valid_engine_count)
+                                % fprintf("testing engine count w/ n = %1.0f\n", n);
+                                obj = obj.c_estimate_subsystem_masses(n, m_pl);
+
+                                T_valid = [
+                                        obj.propellants(1).thrust_per_motor_stage1 * n >= 1.3 * (1.3*obj.c_estimated_m_total_margin) *g;
+                                        obj.propellants(2).thrust_per_motor_stage2 * n >= 0.76 * (1.3*(obj.c_estimated_m_stages_margin(2)+obj.c_estimated_m_nrec_margin)) * g;   
+                                ];
+
+                                if T_valid(1) && T_valid(2)
+                                        % fprintf("valid engine count found at n = %1.0f\n", n);
+                                        valid_engine_count = true;
+                                else
+                                        n = n+1;
+                                end
+                        end
+
+                        obj.c_necessary_engine_count = n;
+                end
+
+                function obj = c_calculate_estimated_costs(obj)
+                        arguments
+                                obj TwoStageLV
+                        end
+                        obj.c_estimated_c_stages = [
+                                13.52*obj.c_estimated_m_stages_margin(1)^(0.55)*1e6;
+                                13.52*obj.c_estimated_m_stages_margin(2)^(0.55)*1e6;
+                        ];
+                        obj.c_estimated_c_total = 13.52*obj.c_estimated_m_total_margin^(0.55)*1e6;
+                end
+
+                function obj = save_estimated_cost_table(obj)
+                        estimated_cost_table = table( ...
+                                [obj.c_stage_subsystem_masses.propellant(1); obj.c_stage_subsystem_masses.propellant(2); sum(obj.c_stage_subsystem_masses.propellant)], ...
+                                [obj.c_stage_subsystem_masses.propellant_tanks(1); obj.c_stage_subsystem_masses.propellant_tanks(2); sum(obj.c_stage_subsystem_masses.propellant_tanks)], ...
+                                [obj.c_stage_subsystem_masses.propellant_tank_insulation(1); obj.c_stage_subsystem_masses.propellant_tank_insulation(2); sum(obj.c_stage_subsystem_masses.propellant_tank_insulation)], ...
+                                [obj.c_stage_subsystem_masses.engines_or_casing(1); obj.c_stage_subsystem_masses.engines_or_casing(2); sum(obj.c_stage_subsystem_masses.engines_or_casing)], ...
+                                [obj.c_stage_subsystem_masses.thrust_structure(1); obj.c_stage_subsystem_masses.thrust_structure(2); sum(obj.c_stage_subsystem_masses.thrust_structure)], ...
+                                [obj.c_stage_subsystem_masses.gimbals(1); obj.c_stage_subsystem_masses.gimbals(2); sum(obj.c_stage_subsystem_masses.gimbals)], ...
+                                [obj.c_stage_subsystem_masses.avionics(1); obj.c_stage_subsystem_masses.avionics(2); sum(obj.c_stage_subsystem_masses.avionics)], ...
+                                [obj.c_stage_subsystem_masses.wiring(1); obj.c_stage_subsystem_masses.wiring(2); sum(obj.c_stage_subsystem_masses.wiring)], ...
+                                ["-"; "-"; obj.c_stage_subsystem_masses.payload_fairing], ...
+                                [obj.c_stage_subsystem_masses.inter_tank_fairing(1); obj.c_stage_subsystem_masses.engines_or_casing(2); sum(obj.c_stage_subsystem_masses.engines_or_casing)], ...
+                                ["-"; "-"; obj.c_stage_subsystem_masses.inter_stage_fairing], ...
+                                ["-"; "-"; obj.c_stage_subsystem_masses.aft_fairing], ...
+                                [obj.c_estimated_m_stages(1); obj.c_estimated_m_stages(2); obj.c_estimated_m_total], ...
+                                [obj.c_estimated_m_stages_margin(1); obj.c_estimated_m_stages_margin(2); obj.c_estimated_m_total_margin], ...
+                                [obj.c_estimated_m_stages(1)-obj.c_stage_subsystem_masses.propellant(1); obj.c_estimated_m_stages(2)-obj.c_stage_subsystem_masses.propellant(2); obj.c_estimated_m_total-sum(obj.c_stage_subsystem_masses.propellant)], ...
+                                [obj.c_estimated_m_stages_margin(1)-obj.c_stage_subsystem_masses.propellant(1); obj.c_estimated_m_stages_margin(2)-obj.c_stage_subsystem_masses.propellant(2); obj.c_estimated_m_total_margin-sum(obj.c_stage_subsystem_masses.propellant)], ...
+                                [obj.c_length_stages(1); obj.c_length_stages(2); obj.c_length_total], ...
+                                ["-"; "-"; obj.c_necessary_engine_count], ...
+                                [obj.c_estimated_c_stages(1)/1e9; obj.c_estimated_c_stages(2)/1e9; obj.c_estimated_c_total/1e9], ...
+                                RowNames=["Stage 1", "Stage 2", "Total"], ...
+                                VariableNames=[ ...
+                                        "Propellant [kg]";
+                                        "Propellant Tank [kg]";
+                                        "Propellant Tank Insulation [kg]";
+                                        "Engines/Casing [kg]";
+                                        "Thrust Structure [kg]";
+                                        "Gimbals [kg]";
+                                        "Avionics [kg]";
+                                        "Wiring [kg]";
+                                        "Payload Fairing [kg]";
+                                        "Inter-Tank Fairing [kg]";
+                                        "Inter-Stage Fairing [kg]";
+                                        "Aft Fairing [kg]";
+                                        "Stage Mass [kg]";
+                                        "Stage Mass w/ Margin [kg]";
+                                        "Inert Mass [kg]";
+                                        "Inert Mass w/ Margin [kg]";
+                                        "Stage Length [m]";
+                                        "Engine Count [-]";
+                                        "Stage Cost [B$USD]";
+                                ]);
+
+                        idx = vartype("numeric");
+                        estimated_cost_table{:, idx} = round(estimated_cost_table{:, idx}, 3, "significant");
+                        filename = sprintf("./tables/cost/%2$s/s1 %1$s - s2 %2$s.csv", obj.propellants(1).name, obj.propellants(2).name);
+                        writetable(estimated_cost_table, filename);
                 end
 
                 function [m, m_in, m_pr, m_0] = calculate_stage_masses(obj, X, DeltaV, m_pl, delta, g)
