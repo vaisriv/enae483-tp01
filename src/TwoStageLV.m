@@ -379,7 +379,7 @@ classdef TwoStageLV
 
                         % write csv under ./tables/mass/<s2>/s1 <s1> - s2 <s2>.csv
                         filename = sprintf("./tables/mass/%2$s/s1 %1$s - s2 %2$s.csv", obj.propellants(1).name, obj.propellants(2).name);
-                        writetable(estimated_mass_table, filename);
+                        writetable(estimated_mass_table, filename, WriteRowNames=true, WriteVariableNames=true);
                 end
 
                 function obj = c_estimate_subsystem_masses(obj, n, m_pl)
@@ -586,7 +586,7 @@ classdef TwoStageLV
                         idx = vartype("numeric");
                         estimated_cost_table{:, idx} = round(estimated_cost_table{:, idx}, 3, "significant");
                         filename = sprintf("./tables/cost/%2$s/s1 %1$s - s2 %2$s.csv", obj.propellants(1).name, obj.propellants(2).name);
-                        writetable(estimated_cost_table, filename);
+                        writetable(estimated_cost_table, filename, WriteRowNames=true, WriteVariableNames=true);
                 end
 
                 function [m, m_in, m_pr, m_0] = calculate_stage_masses(obj, X, DeltaV, m_pl, delta, g)
