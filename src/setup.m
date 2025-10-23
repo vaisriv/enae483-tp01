@@ -3,9 +3,15 @@
 % givens
 DeltaV_Total = 12.3e3; % [m/s]
 m_pl = 26000; % [kg]
+payload_reqs = struct(...
+        "diameter", 5.2, ...
+        "height", 13 ...
+); % [m]
 delta = [0.08 0.08]; % [-]
 g = 9.81; % [m/s^2]
-d_lv = 19.6; % [m]
+
+d_lv = 9.8; % [m]
+
 
 % propellants
 propellants = struct(...
