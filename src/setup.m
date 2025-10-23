@@ -1,10 +1,11 @@
 %% Setup
 
 % givens
-DeltaV_Total = 12.3e3;
-m_pl = 26000;
-delta = [0.08 0.08];
-g = 9.81;
+DeltaV_Total = 12.3e3; % [m/s]
+m_pl = 26000; % [kg]
+delta = [0.08 0.08]; % [-]
+g = 9.81; % [m/s^2]
+d_lv = 19.6; % [m]
 
 % propellants
 propellants = struct(...

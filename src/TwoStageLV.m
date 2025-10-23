@@ -106,7 +106,7 @@ classdef TwoStageLV
         end
 
         methods
-                function obj = TwoStageLV(propellants, DeltaV, m_pl, delta, g)
+                function obj = TwoStageLV(propellants, DeltaV, m_pl, delta, g, d_lv)
                         % constructor: runs part-01 trend sweep then part-02 subsystem sizing
                         arguments
                                 propellants(1, 2) PropellantMix
@@ -114,6 +114,7 @@ classdef TwoStageLV
                                 m_pl double
                                 delta(1, 2) double
                                 g double
+                                d_lv double
                         end
                         obj.propellants = propellants;
 
@@ -121,7 +122,7 @@ classdef TwoStageLV
                         obj = obj.run_part_01(DeltaV, m_pl, delta, g);
 
                         % part 02: engine count, subsystem masses, lengths, margins, costs
-                        obj = obj.run_part_02(m_pl, g);
+                        obj = obj.run_part_02(m_pl, g, d_lv);
                 end
 
                 function obj = run_part_01(obj, DeltaV, m_pl, delta, g)
@@ -138,34 +139,36 @@ classdef TwoStageLV
                         % obj = obj.save_cost_fig();
                 end
 
-                function obj = run_part_02(obj, m_pl, g)
+                function obj = run_part_02(obj, m_pl, g, d_lv)
                         %run_part_02 execute part-02 sizing twice (m_* path and c_* path)
                         arguments
                                 obj TwoStageLV
                                 m_pl double
                                 g double
+                                d_lv double
                         end
 
                         % mass-first path (m_*)
-                        obj = obj.m_calculate_desired_engine_count(m_pl, g);
-                        obj = obj.m_estimate_subsystem_masses(obj.m_necessary_engine_count, m_pl);
+                        obj = obj.m_calculate_desired_engine_count(m_pl, g, d_lv);
+                        obj = obj.m_estimate_subsystem_masses(obj.m_necessary_engine_count, m_pl, d_lv);
                         obj = obj.m_calculate_estimated_costs();
                         obj = obj.save_estimated_mass_table();
 
                         % cost-first path (c_*)
-                        obj = obj.c_calculate_desired_engine_count(m_pl, g);
-                        obj = obj.c_estimate_subsystem_masses(obj.c_necessary_engine_count, m_pl);
+                        obj = obj.c_calculate_desired_engine_count(m_pl, g, d_lv);
+                        obj = obj.c_estimate_subsystem_masses(obj.c_necessary_engine_count, m_pl, d_lv);
                         obj = obj.c_calculate_estimated_costs();
                         obj = obj.save_estimated_cost_table();
                 end
 
-                function obj = m_estimate_subsystem_masses(obj, n, m_pl)
+                function obj = m_estimate_subsystem_masses(obj, n, m_pl, d_lv)
                         %m_estimate_subsystem_masses compute subsystem masses for m_* path
                         % uses oxidizer/fuel split, volumes, surface areas, and curve-fits
                         arguments
                                 obj TwoStageLV
-                                n double      % engine count
-                                m_pl double   % payload mass (kg)
+                                n double
+                                m_pl double
+                                d_lv double
                         end
 
                         % split prop mass into oxidizer/fuel using mix ratios
@@ -190,9 +193,9 @@ classdef TwoStageLV
                         ];
 
                         % geometric assumptions for tanks and fairings
-                        r_tank = 9.8; % [m] assumed radius (common to both stages)
+                        r_tank = d_lv/2; % desired tank radius is half of lv diameter
 
-                        % payload ogive (area/height model)
+                        % payload cone (area/height model)
                         payload_height = 338/(5*r_tank - 26);
                         payload_area = pi*r_tank*sqrt(r_tank^2+payload_height^2);
 
@@ -287,19 +290,20 @@ classdef TwoStageLV
                         end
                 end
 
-                function obj = m_calculate_desired_engine_count(obj, m_pl, g)
+                function obj = m_calculate_desired_engine_count(obj, m_pl, g, d_lv)
                         %m_calculate_desired_engine_count find smallest n meeting thrust margins
                         % stage 1: t/w >= 1.3 on 1.3*total_with_margin; stage 2: t/w >= 0.76 on upper mass
                         arguments
                                 obj TwoStageLV
                                 m_pl double
                                 g double
+                                d_lv double
                         end
 
                         n = 1;
                         valid_engine_count = false;
                         while ~valid_engine_count
-                                obj = obj.m_estimate_subsystem_masses(n, m_pl);
+                                obj = obj.m_estimate_subsystem_masses(n, m_pl, d_lv);
 
                                 T_valid = [
                                         obj.propellants(1).thrust_per_motor_stage1 * n >= 1.3 * (1.3*obj.m_estimated_m_total_margin) * g;
@@ -382,12 +386,13 @@ classdef TwoStageLV
                         writetable(estimated_mass_table, filename, WriteRowNames=true, WriteVariableNames=true);
                 end
 
-                function obj = c_estimate_subsystem_masses(obj, n, m_pl)
+                function obj = c_estimate_subsystem_masses(obj, n, m_pl, d_lv)
                         %c_estimate_subsystem_masses compute subsystem masses for c_* path
                         arguments
                                 obj TwoStageLV
                                 n double
                                 m_pl double
+                                d_lv double
                         end
 
                         % same flow as m_* path, using separate c_* fields
@@ -408,7 +413,7 @@ classdef TwoStageLV
                                 fuel_masses(2)/obj.propellants(2).density_fuel;
                         ];
 
-                        r_tank = 9.8; % [m]
+                        r_tank = d_lv/2;
 
                         % same geometry assumptions
                         payload_height = 338/(5*r_tank - 26);
@@ -499,18 +504,19 @@ classdef TwoStageLV
                         end
                 end
 
-                function obj = c_calculate_desired_engine_count(obj, m_pl, g)
+                function obj = c_calculate_desired_engine_count(obj, m_pl, g, d_lv)
                         %c_calculate_desired_engine_count same thrust-margin search for c_* path
                         arguments
                                 obj TwoStageLV
                                 m_pl double
                                 g double
+                                d_lv double
                         end
 
                         n = 1;
                         valid_engine_count = false;
                         while ~valid_engine_count
-                                obj = obj.c_estimate_subsystem_masses(n, m_pl);
+                                obj = obj.c_estimate_subsystem_masses(n, m_pl, d_lv);
 
                                 T_valid = [
                                         obj.propellants(1).thrust_per_motor_stage1 * n >= 1.3 * (1.3*obj.c_estimated_m_total_margin) * g;
