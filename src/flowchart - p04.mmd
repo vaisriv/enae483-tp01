@@ -27,19 +27,19 @@ classDiagram
         - propellant_tank_insulation_mer_oxidizer : double
         - propellant_tank_insulation_mer_fuel : double
         - is_solid : logical
-        %% + PropellantMix(...)  : constructor
+        + PropellantMix(...)  : constructor
     }
     class TwoStageLV {
         <<analysis>>
-        %% - propellants : PropellantMix[1..2]
-        %% - xs : double[1..100]
-        %% - ms, m_ins, m_prs : double[2,100]
-        %% - m_0s : double[1,100]
-        %% - m_0_min, cost_0_min : double
-        %% - i_m_min, i_c_min : double
-        %% - mass_fig, cost_fig : figure handle
-        %% - m_stage_subsystem_masses, c_stage_subsystem_masses : struct
-        %% - m_estimated_*, c_estimated_* : rollup fields
+        - propellants : PropellantMix[1..2]
+        - xs : double[1..100]
+        - ms, m_ins, m_prs : double[2,100]
+        - m_0s : double[1,100]
+        - m_0_min, cost_0_min : double
+        - i_m_min, i_c_min : double
+        - mass_fig, cost_fig : figure handle
+        - m_stage_subsystem_masses, c_stage_subsystem_masses : struct
+        - m_estimated_*, c_estimated_* : rollup fields
         + TwoStageLV(propellants, deltaV, m_pl, delta, g) : constructor
         + run_part_01(deltaV, m_pl, delta, g)
         + run_part_02(m_pl, g)
