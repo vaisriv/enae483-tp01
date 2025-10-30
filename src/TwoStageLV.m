@@ -805,7 +805,7 @@ classdef TwoStageLV
                         annotation(obj.mass_fig, textbox=[leftX bottomY boxW boxH], String=infoLines, ...
                                 Interpreter="latex", FitBoxToText="on", VerticalAlignment="middle", FontSize=10);
 
-                        xlim([0 1]); xlabel("$X$", Interpreter="latex");
+                        xlim([0 1]); xlabel("$X: \Delta V$ Ratio $\left(\frac{\Delta V_1}{\Delta V_2}\right)$", Interpreter="latex");
                         ylim([0 obj.m_0_min/1e3*2]); ylabel("$m \mathrm{[t]}$", Interpreter="latex");
 
                         set(gca,'TickLabelInterpreter','latex');
@@ -854,7 +854,7 @@ classdef TwoStageLV
                         annotation(obj.cost_fig, textbox=[leftX bottomY boxW boxH], String=infoLines, ...
                                 Interpreter="latex", FitBoxToText="on", VerticalAlignment="middle", FontSize=10);
 
-                        xlim([0 1]); xlabel("$X$", Interpreter="latex");
+                        xlim([0 1]); xlabel("$X: \Delta V$ Ratio $\left(\frac{\Delta V_1}{\Delta V_2}\right)$", Interpreter="latex");
                         ylim([0 obj.cost_0_min/1e9*2]); ylabel("$\mathrm{Cost} \mathrm{[\$B2025]}$", Interpreter="latex");
 
                         title(sprintf("Cost Trends for $1^{\\mathrm{st}}$ Stage: %s; $2^{\\mathrm{nd}}$ Stage: %s", ...
